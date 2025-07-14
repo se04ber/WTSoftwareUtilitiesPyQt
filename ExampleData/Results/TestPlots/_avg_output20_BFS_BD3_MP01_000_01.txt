@@ -1,0 +1,6 @@
+# General concentration measurement data:
+# 
+# geometric scale: 1:250.0
+# Variables: x (measurement relativ to source): 855.16 [mm], y (measurement relativ to source): 176.29 [mm], z (measurement relativ to source): 162.0 [mm], x_source: 0.0 [mm], y_source: 0.0 [mm], z_source: 0.0 [mm], x_measure: 855.16 [mm], y_measure: 176.29 [mm], z_measure: 162.0 [mm],ambient temperature: 23.5 [°C], ambient pressure: 1009.38 [Pa],mass flow rate 389.1940 [kg/s], reference length (model): 0.0040 [m], reference length (full-scale): 1.0000 [m], Tracer gas: C12, mol. weight tracer: 28.9700 [mol/kg], gas factor: 0.500000, calibartion curve: nan, wtref: 3.9133 [m/s], full scale flow rate: 0.4151 [m^3/s]
+# "c_star [-]" "net_concentration [ppmV]" "full_scale_concentration [ppmV]"
+0.0000 74.9008 3.0009

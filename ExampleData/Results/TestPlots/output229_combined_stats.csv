@@ -1,0 +1,4 @@
+Filename,X_fs [m],Y_fs [m],Z_fs [m],Avg_c_star [-],Avg_net_concentration [ppmV],Avg_full_scale_concentration [ppmV],Percentiles 95_cstar,Percentiles 5_cstar,Peak2MeanRatio_cstar
+_stats_output229_UBA_GA_02_04_01_000_1_001.txt.txt,75.0,0.0,10.0,0.0016,17.1801,17.1801,0.0048,0.0001,17.1801
+_stats_output229_UBA_GA_02_04_01_000_1_001.txt.txt,75.0,0.0,10.0,0.0016,17.1801,17.1801,0.0048,0.0001,17.1801
+_stats_output229_UBA_GA_02_04_01_000_1_001.txt.txt,75.0,0.0,10.0,0.0016,17.1801,17.1801,0.0048,0.0001,17.1801

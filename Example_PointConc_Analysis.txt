@@ -1,0 +1,2389 @@
++*In[1]:*+
+[source, ipython3]
+----
+#Edited: 2025: Sabrina
+#Edited 2020: Johannes
+# This is an example script for the use of the PointConcentration class/object for pointconcentration measurements
+#from the windtunnel python package, showing the use of almost all available analysis functions.
+
+# The columns in the input file are expected to be time, wtref, slow FID, fast ID, release signal and open_rate, 
+# where release signal will be ignored.
+# The PointConcentration class returns a DataFrame, using the standard measurement txt-file output as input
+----
+
+
++*In[2]:*+
+[source, ipython3]
+----
+#Imports
+import os
+import sys
+import matplotlib.pyplot as plt
+import numpy as np
+----
+
+
++*In[23]:*+
+[source, ipython3]
+----
+#Path and file names
+
+# Add the parent directory to the path for the windtunnel package import
+path_dir = "/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare"
+#sys.path.append(os.path.abspath(path_dir))
+import windtunnel as wt
+
+#Path to your input data
+#path = f"{path_dir}/ExampleData/InputData/Concentration/"
+path = f"{path_dir}/ExampleData/InputData/Beispiel Umrechnung zur Kontrolle/"
+# Name of your measurement files prefix
+#namelist = ['BFS_BD3_MP01_000']
+namelist = ['UBA_GA_02_04_01_000_1_001']
+
+#Path to your output folder for average files and plots
+output_path = f"{path_dir}/ExampleData/Results/"
+
+#For PointData for the functions to work the columns of the file should be: time, wtref, slow_FID, fast_FID, open_rate
+#(See manual for the description of the variables)
+
+#Name of csv file which contains ambient conditions data. Multiple diff. ambient conditions for diff datasets can be read-in at ones
+#If no file given or configuration wrong, the program ressorts to try reading-in given values manually below. 
+#csv_file='ambient_conditions.csv'
+
+#csv_file= f"{path_dir}/ExampleData/ParameterFiles/ambient_conditions.csv"
+csv_file= f"{path_dir}/ExampleData/ParameterFiles/ambient_conditions_.UBA_GA.csv"
+parameters_PerFolder = False
+----
+
+
++*In[24]:*+
+[source, ipython3]
+----
+#Variables and Parameters set for all ts, if no ambient_conditions.csv file overgiven
+
+#If at the end calculate entdimensionalised or full scale transform quantities
+#Default: nd:entdimensionalise, ms:model scale, fs:full scale.    
+full_scale='ms'
+
+#Postprocessing before analysis
+applyPostprocessing=True
+averageInterval=60 #s  #Interval to downaverage raw time series to before analysis
+
+#Overgive uncertainty
+uncertainty_value=None #Uncertainty of concentration, has to be calculated/estimated from the experimentator
+#If None overgive no error visualized as errorbars 0.5
+uncertainty_representation="percentage" #"absoluteValue"
+----
+
+
++*In[25]:*+
+[source, ipython3]
+----
+#Example file/Default environment values if no csv_file found:
+
+#Source location  [mm]
+x_source=0
+y_source=0
+z_source=0
+
+#Source mass flow controller, calibration settings
+mass_flow_controller=0.300 #0.600#Stickstoffdurchflussregler #[l/h]*1/100 #'X'  #Controller(settings) used, just a name placeholder for orientation, not used yet
+#If calibration performed on a controller, corrects actual max. flow capacity of controller
+calibration_curve=1.0     #0.3     #0.3 oder 3
+calibration_factor=0 #1      #
+
+#Gas characteristics
+gas_name='C12'           #Just placeholder name variable for orientation, not used for anything
+gas_factor=0.5   #[-]    #!!! Needs to be calculate/specificate f.e. if gas changes 
+mol_weight=29.0 #28.97 #Air [g/mol]
+
+
+#Measurement location [mm]
+x_measure=1020 #855.16
+y_measure= 0    #176.29
+z_measure= 5     #162
+
+#Surrounding conditions
+pressure=101426.04472        #1009.38  #[hPa] ->Pa
+temperature=23             #23.5  #[°C]
+
+#Model to Reality scaling
+scale=400                     #250      #Model/Reality
+scaling_factor=0.5614882               #0.637       #USA1 to selected ref pos.?
+ref_length=1/400              #1/250           #Lref
+ref_height=100/400            #None            #Href
+
+
+full_scale_wtref=10             #6         #Uref_fullscale
+full_scale_flow_rate=0.002     #Q_amb[kg/s]?   #0.5   #Qv_fullscale
+full_scale_temp=20             #[°C]
+full_scale_pressure=101325     #[Pa]
+#Q_ambient[kg/s] ->  Q[m³/s]=Q[kg/s]*R*T/(M*p)
+
+#Variable wdir for wind direction. To be implemented in future. ##
+#wdir=0
+#Variable axis_range. Reserved for future implementation of axis range specification, 
+#analogously to puff mode
+#axis_range='auto'
+----
+
+
++*In[26]:*+
+[source, ipython3]
+----
+###### Initialise concentration ts dictionary of length namelist, as well as for full scale and entdimensionalised
+conc_ts = {}
+conc_ts.fromkeys(namelist)
+conc_ts_fs = conc_ts
+conc_ts_nd = conc_ts
+
+dict_conc_ts = conc_ts
+dict_conc_nd = conc_ts
+dict_conc_fs = conc_ts
+
+data_dict = {}
+data_dict.fromkeys(namelist)
+----
+
+
++*Out[26]:*+
+----{'UBA_GA_02_04_01_000_1_001': None}----
+
+
++*In[27]:*+
+[source, ipython3]
+----
+#Testing nothing should be read-in already
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].x_source)
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].temperature)
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].mass_flow_controller)
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].scaling_factor)
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].gas_factor)
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].full_scale_flow_rate)
+----
+
+
++*Out[27]:*+
+----
+
+    ---------------------------------------------------------------------------
+
+    StopIteration                             Traceback (most recent call last)
+
+    Cell In[27], line 2
+          1 #Testing nothing should be read-in already
+    ----> 2 print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].x_source)
+          3 print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].temperature)
+          4 print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].mass_flow_controller)
+
+
+    StopIteration: 
+
+----
+
+
++*In[28]:*+
+[source, ipython3]
+----
+#Read in ambient conditions for each folder or concentration ts from given csv file or for same conditions from manually
+parameters_PerFolder = parameters_PerFolder #False  #True=for each folder/namelist entry new column, False: for each ts one column entry
+
+for name in namelist:
+    files = wt.get_files(path, name)
+    print(f"files: {files}")
+
+    #Initilise Dictionary for each given name containing dimensions of nr of files ts#0-
+    conc_ts[name] = {}
+    conc_ts[name].fromkeys(files)
+    
+    if parameters_PerFolder==True:
+        #Read ambient conditions from csv file only for each folder
+        ambient_conditions = wt.PointConcentration.get_ambient_conditions(path=path, name=name, input_file=csv_file)
+        #print(ambient_conditions)
+        #Else read/use given default from cell above
+        if ambient_conditions is None:
+            []
+        #Read ambient conditions from csv file
+        else:
+            x_source, y_source, z_source, x_measure, y_measure, z_measure, pressure, temperature, calibration_curve, mass_flow_controller, calibration_factor, scaling_factor, scale, ref_length, \
+            ref_height, gas_name, mol_weight, gas_factor, full_scale_wtref, full_scale_flow_rate, full_scale_temp, full_scale_pressure = wt.PointConcentration.read_ambient_conditions(
+                ambient_conditions, name)
+            
+        
+    for file in files:
+        if parameters_PerFolder == False:
+            #Read in ambient condition column for each ts
+            ambient_conditions = wt.PointConcentration.get_ambient_conditions(path=path, name=file, input_file=csv_file)
+            #Else read/use given default from cell above
+            if ambient_conditions is None:
+                []
+            #Read ambient conditions from csv file
+            else:
+                x_source, y_source, z_source, x_measure, y_measure, z_measure, pressure, temperature, calibration_curve, mass_flow_controller, calibration_factor, scaling_factor, scale, ref_length, \
+                ref_height, gas_name, mol_weight, gas_factor, full_scale_wtref, full_scale_flow_rate, full_scale_temp, full_scale_pressure = wt.PointConcentration.read_ambient_conditions(
+                ambient_conditions, file)
+
+        conc_ts[name][file] = wt.PointConcentration.from_file(path + file)
+    
+        conc_ts[name][file].ambient_conditions(x_source=x_source, y_source=y_source, z_source=z_source,
+                                               x_measure=x_measure, y_measure=y_measure, z_measure=z_measure,
+                                               pressure=pressure,
+                                               temperature=temperature,
+                                               calibration_curve=calibration_curve,
+                                               mass_flow_controller=mass_flow_controller,
+                                               calibration_factor=calibration_factor)
+
+        #Set read-in scaling, gas and full scale information to internal class variables
+        conc_ts[name][file].scaling_information(scaling_factor=scaling_factor, 
+                                                scale=scale,
+                                                ref_length=ref_length, 
+                                                ref_height=ref_height)
+        conc_ts[name][file].tracer_information(gas_name=gas_name,
+                                               mol_weight=mol_weight,
+                                               gas_factor=gas_factor)
+        conc_ts[name][file].full_scale_information(full_scale_wtref=full_scale_wtref,
+                                                   full_scale_flow_rate=full_scale_flow_rate,
+                                                   full_scale_temp=full_scale_temp,full_scale_pressure=full_scale_pressure)
+
+#wdir,0,5
+----
+
+
++*Out[28]:*+
+----
+files: ['UBA_GA_02_04_01_000_1_001.txt.ts#0', 'UBA_GA_02_04_01_000_1_001.txt.ts#1', 'UBA_GA_02_04_01_000_1_001.txt.ts#2', 'UBA_GA_02_04_01_000_1_001.txt.ts#3', 'UBA_GA_02_04_01_000_1_001.txt.ts#4', 'UBA_GA_02_04_01_000_1_001.txt.ts#5']
+
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:62: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.time = time
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:63: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.open_rate = open_rate
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:64: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.wtref = wtref
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:62: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.time = time
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:63: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.open_rate = open_rate
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:64: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.wtref = wtref
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:62: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.time = time
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:63: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.open_rate = open_rate
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:64: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.wtref = wtref
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:62: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.time = time
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:63: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.open_rate = open_rate
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:64: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.wtref = wtref
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:62: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.time = time
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:63: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.open_rate = open_rate
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:64: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.wtref = wtref
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:62: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.time = time
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:63: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.open_rate = open_rate
+/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/windtunnel/concentration/PointConcentration.py:64: UserWarning: Pandas doesn't allow columns to be created via a new attribute name - see https://pandas.pydata.org/pandas-docs/stable/indexing.html#attribute-access
+  self.wtref = wtref
+----
+
+
++*In[29]:*+
+[source, ipython3]
+----
+#Testing everything from ambient-conditions file now read-in
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].x_source)
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].temperature)
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].mass_flow_controller)
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].scaling_factor)
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].gas_factor)
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].full_scale_flow_rate)
+#self = conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))]
+----
+
+
++*Out[29]:*+
+----
+0.0
+23.0
+0.3
+0.656868699877201
+1.0
+0.5
+----
+
+
++*In[30]:*+
+[source, ipython3]
+----
+#Calculate mass flow rate, net concentration and dimensionalise concentration
+for name in namelist:
+    for file in files:
+        
+        conc_ts[name][file].convert_temperature()
+        conc_ts[name][file].calc_wtref_mean()
+        
+        conc_ts[name][file].calc_model_mass_flow_rate(usingMaxFlowRate="True",applyCalibration="False")
+        conc_ts[name][file].calc_net_concentration()
+
+        #conc_ts[name][file].clear_zeros()  #Remove values net_concentration =< 0 from dataset !noise
+        conc_ts[name][file].calc_c_star()
+
+        conc_ts[name][file].calc_full_scale_concentration() #Try
+----
+
+
++*In[31]:*+
+[source, ipython3]
+----
+#Test c*star output
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].c_star)
+#Test full scale trafo
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].net_concentration)
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].full_scale_concentration)
+
+----
+
+
++*Out[31]:*+
+----
+0        0.000447
+1        0.000335
+2        0.000793
+3        0.001278
+4        0.001246
+           ...   
+29995    0.002122
+29996    0.002714
+29997    0.001003
+29998    0.001609
+29999    0.001123
+Length: 30000, dtype: float64
+0        13.545340
+1        10.146585
+2        24.008371
+3        38.688520
+4        37.725384
+           ...    
+29995    64.262288
+29996    82.192946
+29997    30.383783
+29998    48.725856
+29999    34.012310
+Length: 30000, dtype: float64
+0         37.141921
+1         27.822385
+2         65.832015
+3        106.085633
+4        103.444671
+            ...    
+29995    176.210036
+29996    225.376693
+29997     83.313677
+29998    133.608452
+29999     93.263258
+Length: 30000, dtype: float64
+----
+
+
++*In[32]:*+
+[source, ipython3]
+----
+print(np.mean(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].net_concentration))
+----
+
+
++*Out[32]:*+
+----
+57.80034634370001
+----
+
+
++*In[33]:*+
+[source, ipython3]
+----
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].ref_length)
+----
+
+
++*Out[33]:*+
+----
+0.005
+----
+
+
++*In[34]:*+
+[source, ipython3]
+----
+print(np.mean(conc_ts[name][files[0]].c_star))
+----
+
+
++*Out[34]:*+
+----
+0.001908736363367417
+----
+
+
++*In[35]:*+
+[source, ipython3]
+----
+plt.plot(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].c_star)
+----
+
+
++*Out[35]:*+
+----[<matplotlib.lines.Line2D at 0x725ca6161570>]
+![png](output_14_1.png)
+----
+
+
++*In[36]:*+
+[source, ipython3]
+----
+#Options for Outputting data in full-scale, model scale, and non-dimensionally.
+
+for name in namelist:
+    for file in files:
+        
+        if full_scale == 'ms':
+            dict_conc_ts = conc_ts
+            
+        elif full_scale == 'fs':
+            dict_conc_ts = conc_ts_fs
+            dict_conc_ts[name][file].to_full_scale()
+            
+        elif full_scale == 'nd':
+            dict_conc_ts = conc_ts_nd
+            dict_conc_ts[name][file].to_non_dimensional()
+        else:
+            print(
+                "Error: invalid input for full_scale. Data can only be computed in model scale (full_scale='ms'), full scale (full_scale='fs'), or non-dimensionally (full_scale=nd).")
+        
+----
+
+
++*In[37]:*+
+[source, ipython3]
+----
+#Postprocessing if overgiven
+"""
+measurementFreq=0.005 #Time series frequency #For now only for static case implemented
+averageInterval=averageInterval #60 #s
+columns=["net_concentration"] #Columns to average down
+
+print(len(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))]))
+#print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].net_concentration)
+if(applyPostprocessing==True):
+    for name in namelist:
+        for file in files:
+            dict_conc_ts[name][file].downAverage(averageInterval=averageInterval,measurementFreq=measurementFreq, columns=columns)
+            #dict_conc_ts[name][file].net_concentration
+
+print(len(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].net_concentration))
+"""
+----
+
+
++*Out[37]:*+
+----'\nmeasurementFreq=0.005 #Time series frequency #For now only for static case implemented\naverageInterval=averageInterval #60 #s\ncolumns=["net_concentration"] #Columns to average down\n\nprint(len(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))]))\n#print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].net_concentration)\nif(applyPostprocessing==True):\n    for name in namelist:\n        for file in files:\n            dict_conc_ts[name][file].downAverage(averageInterval=averageInterval,measurementFreq=measurementFreq, columns=columns)\n            #dict_conc_ts[name][file].net_concentration\n\nprint(len(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].net_concentration))\n'----
+
+
++*In[38]:*+
+[source, ipython3]
+----
+print(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].net_concentration)
+----
+
+
++*Out[38]:*+
+----
+0        13.545340
+1        10.146585
+2        24.008371
+3        38.688520
+4        37.725384
+           ...    
+29995    64.262288
+29996    82.192946
+29997    30.383783
+29998    48.725856
+29999    34.012310
+Length: 30000, dtype: float64
+----
+
+
++*In[39]:*+
+[source, ipython3]
+----
+#Saving PointConcObject calculates new quantities(f.e. c*star) to files
+#At the moment path hardcoded to windwos, but still ok
+#default
+os = "Linux"
+
+if os=="Windows":
+    folder = 'Point_Data\\' + name[:name.find('.')] + '\\'
+elif os=="Linux":
+     folder = 'Files/' + 'Point_Data/' + name[:name.find('.')] + '/'
+
+for name in namelist:
+    for file in files:
+        
+        wt.check_directory(output_path + folder)
+        dict_conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].__check_sum = 8
+        #dict_conc_ts[name][file].__check_sum = 8
+       
+        if full_scale == 'ms':
+            dict_conc_ts[name][file].save2file_ms(file, out_dir=output_path + folder)
+        elif full_scale == 'fs':
+            dict_conc_ts[name][file].save2file_fs(file, out_dir=output_path + folder)
+        elif full_scale == 'nd':
+            dict_conc_ts[name][file].save2file_nd(file, out_dir=output_path + folder)
+        else:
+            print(
+                "Error: invalid input for full_scale. Data can only be computed in model scale (full_scale='ms'), full scale (full_scale='fs'), or non-dimensionally (full_scale=nd).")
+----
+
+
++*In[40]:*+
+[source, ipython3]
+----
+#Saving averages and stats to files under folder Point_Data_avg/Point_Data_stats
+#At the moment path hardcoded to windows, but still ok
+os = "Linux"
+if os=="Windows":
+    folder_avg = 'Point_Data_avg\\' + name[:name.find('.')] + '\\'
+    folder_stats = 'Point_Data_stats\\' + name[:name.find('.')] + '\\'
+elif os=="Linux":
+    folder_avg = 'Files/' + 'Point_Data_avg/' + name[:name.find('.')] + '/'
+    folder_stats = 'Files/' + 'Point_Data_stats/' + name[:name.find('.')] + '/'
+
+#Stats Full ausgabe: Mean, percentile 95, percentile 5, peak2Mean 
+for name in namelist:
+    for file in files: 
+        wt.check_directory(output_path + folder_avg)
+        wt.check_directory(output_path + folder_stats)
+        dict_conc_ts[name][file].save2file_avg(file, out_dir=output_path + folder_avg)
+        dict_conc_ts[name][file].save2file_fullStats(file, out_dir=output_path + folder_stats)  
+----
+
+
++*In[41]:*+
+[source, ipython3]
+----
+for name in namelist:
+    for file in files:
+        print(conc_ts[name][file].calc_percentiles(percentiles=[10, 90, 95], var='net_concentration'))
+        #print(np.mean(conc_ts[name][file].net_concentration))
+        #print(np.std(conc_ts[name][file].net_concentration))
+----
+
+
++*Out[41]:*+
+----
+{10: 12.215996500000001, 90: 120.00919130000001, 95: 161.68999759999997}
+{10: 9.1554916, 90: 125.9157658000001, 95: 173.63429904999998}
+{10: 7.128442400000001, 90: 116.657799, 95: 158.66340479999997}
+{10: 6.7755245, 90: 104.66199250000001, 95: 143.8288077}
+{10: 7.2079699999999995, 90: 94.27061820000002, 95: 126.05151569999998}
+{10: 8.027153400000001, 90: 86.20406400000002, 95: 112.24882489999997}
+----
+
+
++*In[42]:*+
+[source, ipython3]
+----
+#Concentration fluctuation analysis 
+#Intermittency based on threshold, peak2Mean, concentration variance spectral density distribution
+
+#Seettings intermittency calculation
+threshold_type="ratio" #ratio, absolute
+threshold_method="mean" #mean, std
+intermittency_threshold=1.5 #-> if type=ratio,method mean, threshold=threshold*mean(concentration), if type=absolute: threshold=threshold
+
+for name in namelist:
+    for file in files:
+        conc_ts[name][file].analyze_concentration_fluctuations(dimensionless="False",
+                                                       intermittency_threshold=intermittency_threshold,threshold_method=threshold_method)
+#power(variance) of concentration changes for different frequencies/timer interval lengths 
+#Low-frequency peak: Slow, gradual concentration changes
+#High-frequency peak: Rapid, quick concentration fluctuations
+#Broad spectrum: Mixed or complex concentration dynamics
+----
+
+
++*Out[42]:*+
+----
+![png](output_21_0.png)
+
+![png](output_21_1.png)
+
+![png](output_21_2.png)
+
+![png](output_21_3.png)
+
+![png](output_21_4.png)
+
+![png](output_21_5.png)
+----
+
+
++*In[43]:*+
+[source, ipython3]
+----
+#Testing incorporation of STJF for intermittency (Sequential time join fourier, leaves time domain intact)
+#STFTs calculates sequential FFTs and can be used as a way of quantifying the change of a spectrum over time.
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.signal import stft
+
+#0.005 6.0045 2.276105 12.835903 2.381506 3.91625 
+#0.015 5.992015 1.911356 28.29813 2.390326 3.914681 
+sampling_rate = 100#Hz
+
+for name in namelist:
+    for file in files:
+        f, t, Zxx = stft(conc_ts[name][file].wtref, fs=sampling_rate, nperseg=256, noverlap=128)
+        plt.pcolormesh(t, f, np.abs(Zxx), shading='gouraud')
+        plt.ylabel('Frequency [Hz]')
+        plt.xlabel('Time [s]')
+        #plt.yscale('log')  #logarithmic scale?
+        plt.ylim(0,1)
+        #plt.colorbar(label='Magnitude')
+        plt.show()
+----
+
+
++*Out[43]:*+
+----
+![png](output_22_0.png)
+
+![png](output_22_1.png)
+
+![png](output_22_2.png)
+
+![png](output_22_3.png)
+
+![png](output_22_4.png)
+
+![png](output_22_5.png)
+----
+
+
++*In[44]:*+
+[source, ipython3]
+----
+#For completeness also calculate further characteristic metrics of flow/ wind velocity time series (from wtref ts), skewness ..
+#print(conc_ts[name][file].calculate_turbulence_intensity(dimensionless="True",returnDistribution="False",returnMetrics="True"))
+----
+
+
++*In[45]:*+
+[source, ipython3]
+----
+from windtunnel.concentration.CompareDatasets import compare_point_concentrations_3
+#Give overview/comparison for the data, one plot including of of the plots choosen in the list "functionsForOverview
+#Means, Pdf, Cdf, PowerDensity: Number of ts does not matter that much
+#Scatterplot: use only 2 ts
+#Histogram, Boxplot: would also recommend not to many, because of overlapping of the histograms for comparison, space for the boxplots..
+
+#functionsForOverview = ["all"] #defaul -> all of the available plots
+#all_plot_types = [
+#        "Histogram", "Pdf", "Cdf", "Means", "BoxPlot", 
+#        "QuantilPlot", "ScatterPlot", "ResidualPlot", "Autocorrelation"
+#    ]
+    
+functionsForOverview = [
+    "Histogram",
+    "BoxPlot"
+    #"",
+    "Pdf",
+    "Cdf",
+    "Means",
+    "PowerDensity"
+        ]
+
+
+
++*Out[45]:*+
+----
+![png](output_24_0.png)
+
+matpltlib.legend: WARNING  No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+
+[1 2 3 4 5 6]
+6
+7
+[array([ 0.      ,  0.390625,  0.78125 ,  1.171875,  1.5625  ,  1.953125,
+        2.34375 ,  2.734375,  3.125   ,  3.515625,  3.90625 ,  4.296875,
+        4.6875  ,  5.078125,  5.46875 ,  5.859375,  6.25    ,  6.640625,
+        7.03125 ,  7.421875,  7.8125  ,  8.203125,  8.59375 ,  8.984375,
+        9.375   ,  9.765625, 10.15625 , 10.546875, 10.9375  , 11.328125,
+       11.71875 , 12.109375, 12.5     , 12.890625, 13.28125 , 13.671875,
+       14.0625  , 14.453125, 14.84375 , 15.234375, 15.625   , 16.015625,
+       16.40625 , 16.796875, 17.1875  , 17.578125, 17.96875 , 18.359375,
+       18.75    , 19.140625, 19.53125 , 19.921875, 20.3125  , 20.703125,
+       21.09375 , 21.484375, 21.875   , 22.265625, 22.65625 , 23.046875,
+       23.4375  , 23.828125, 24.21875 , 24.609375, 25.      , 25.390625,
+       25.78125 , 26.171875, 26.5625  , 26.953125, 27.34375 , 27.734375,
+       28.125   , 28.515625, 28.90625 , 29.296875, 29.6875  , 30.078125,
+       30.46875 , 30.859375, 31.25    , 31.640625, 32.03125 , 32.421875,
+       32.8125  , 33.203125, 33.59375 , 33.984375, 34.375   , 34.765625,
+       35.15625 , 35.546875, 35.9375  , 36.328125, 36.71875 , 37.109375,
+       37.5     , 37.890625, 38.28125 , 38.671875, 39.0625  , 39.453125,
+       39.84375 , 40.234375, 40.625   , 41.015625, 41.40625 , 41.796875,
+       42.1875  , 42.578125, 42.96875 , 43.359375, 43.75    , 44.140625,
+       44.53125 , 44.921875, 45.3125  , 45.703125, 46.09375 , 46.484375,
+       46.875   , 47.265625, 47.65625 , 48.046875, 48.4375  , 48.828125,
+       49.21875 , 49.609375, 50.      ]), array([ 0.      ,  0.390625,  0.78125 ,  1.171875,  1.5625  ,  1.953125,
+        2.34375 ,  2.734375,  3.125   ,  3.515625,  3.90625 ,  4.296875,
+        4.6875  ,  5.078125,  5.46875 ,  5.859375,  6.25    ,  6.640625,
+        7.03125 ,  7.421875,  7.8125  ,  8.203125,  8.59375 ,  8.984375,
+        9.375   ,  9.765625, 10.15625 , 10.546875, 10.9375  , 11.328125,
+       11.71875 , 12.109375, 12.5     , 12.890625, 13.28125 , 13.671875,
+       14.0625  , 14.453125, 14.84375 , 15.234375, 15.625   , 16.015625,
+       16.40625 , 16.796875, 17.1875  , 17.578125, 17.96875 , 18.359375,
+       18.75    , 19.140625, 19.53125 , 19.921875, 20.3125  , 20.703125,
+       21.09375 , 21.484375, 21.875   , 22.265625, 22.65625 , 23.046875,
+       23.4375  , 23.828125, 24.21875 , 24.609375, 25.      , 25.390625,
+       25.78125 , 26.171875, 26.5625  , 26.953125, 27.34375 , 27.734375,
+       28.125   , 28.515625, 28.90625 , 29.296875, 29.6875  , 30.078125,
+       30.46875 , 30.859375, 31.25    , 31.640625, 32.03125 , 32.421875,
+       32.8125  , 33.203125, 33.59375 , 33.984375, 34.375   , 34.765625,
+       35.15625 , 35.546875, 35.9375  , 36.328125, 36.71875 , 37.109375,
+       37.5     , 37.890625, 38.28125 , 38.671875, 39.0625  , 39.453125,
+       39.84375 , 40.234375, 40.625   , 41.015625, 41.40625 , 41.796875,
+       42.1875  , 42.578125, 42.96875 , 43.359375, 43.75    , 44.140625,
+       44.53125 , 44.921875, 45.3125  , 45.703125, 46.09375 , 46.484375,
+       46.875   , 47.265625, 47.65625 , 48.046875, 48.4375  , 48.828125,
+       49.21875 , 49.609375, 50.      ]), array([ 0.      ,  0.390625,  0.78125 ,  1.171875,  1.5625  ,  1.953125,
+        2.34375 ,  2.734375,  3.125   ,  3.515625,  3.90625 ,  4.296875,
+        4.6875  ,  5.078125,  5.46875 ,  5.859375,  6.25    ,  6.640625,
+        7.03125 ,  7.421875,  7.8125  ,  8.203125,  8.59375 ,  8.984375,
+        9.375   ,  9.765625, 10.15625 , 10.546875, 10.9375  , 11.328125,
+       11.71875 , 12.109375, 12.5     , 12.890625, 13.28125 , 13.671875,
+       14.0625  , 14.453125, 14.84375 , 15.234375, 15.625   , 16.015625,
+       16.40625 , 16.796875, 17.1875  , 17.578125, 17.96875 , 18.359375,
+       18.75    , 19.140625, 19.53125 , 19.921875, 20.3125  , 20.703125,
+       21.09375 , 21.484375, 21.875   , 22.265625, 22.65625 , 23.046875,
+       23.4375  , 23.828125, 24.21875 , 24.609375, 25.      , 25.390625,
+       25.78125 , 26.171875, 26.5625  , 26.953125, 27.34375 , 27.734375,
+       28.125   , 28.515625, 28.90625 , 29.296875, 29.6875  , 30.078125,
+       30.46875 , 30.859375, 31.25    , 31.640625, 32.03125 , 32.421875,
+       32.8125  , 33.203125, 33.59375 , 33.984375, 34.375   , 34.765625,
+       35.15625 , 35.546875, 35.9375  , 36.328125, 36.71875 , 37.109375,
+       37.5     , 37.890625, 38.28125 , 38.671875, 39.0625  , 39.453125,
+       39.84375 , 40.234375, 40.625   , 41.015625, 41.40625 , 41.796875,
+       42.1875  , 42.578125, 42.96875 , 43.359375, 43.75    , 44.140625,
+       44.53125 , 44.921875, 45.3125  , 45.703125, 46.09375 , 46.484375,
+       46.875   , 47.265625, 47.65625 , 48.046875, 48.4375  , 48.828125,
+       49.21875 , 49.609375, 50.      ]), array([ 0.      ,  0.390625,  0.78125 ,  1.171875,  1.5625  ,  1.953125,
+        2.34375 ,  2.734375,  3.125   ,  3.515625,  3.90625 ,  4.296875,
+        4.6875  ,  5.078125,  5.46875 ,  5.859375,  6.25    ,  6.640625,
+        7.03125 ,  7.421875,  7.8125  ,  8.203125,  8.59375 ,  8.984375,
+        9.375   ,  9.765625, 10.15625 , 10.546875, 10.9375  , 11.328125,
+       11.71875 , 12.109375, 12.5     , 12.890625, 13.28125 , 13.671875,
+       14.0625  , 14.453125, 14.84375 , 15.234375, 15.625   , 16.015625,
+       16.40625 , 16.796875, 17.1875  , 17.578125, 17.96875 , 18.359375,
+       18.75    , 19.140625, 19.53125 , 19.921875, 20.3125  , 20.703125,
+       21.09375 , 21.484375, 21.875   , 22.265625, 22.65625 , 23.046875,
+       23.4375  , 23.828125, 24.21875 , 24.609375, 25.      , 25.390625,
+       25.78125 , 26.171875, 26.5625  , 26.953125, 27.34375 , 27.734375,
+       28.125   , 28.515625, 28.90625 , 29.296875, 29.6875  , 30.078125,
+       30.46875 , 30.859375, 31.25    , 31.640625, 32.03125 , 32.421875,
+       32.8125  , 33.203125, 33.59375 , 33.984375, 34.375   , 34.765625,
+       35.15625 , 35.546875, 35.9375  , 36.328125, 36.71875 , 37.109375,
+       37.5     , 37.890625, 38.28125 , 38.671875, 39.0625  , 39.453125,
+       39.84375 , 40.234375, 40.625   , 41.015625, 41.40625 , 41.796875,
+       42.1875  , 42.578125, 42.96875 , 43.359375, 43.75    , 44.140625,
+       44.53125 , 44.921875, 45.3125  , 45.703125, 46.09375 , 46.484375,
+       46.875   , 47.265625, 47.65625 , 48.046875, 48.4375  , 48.828125,
+       49.21875 , 49.609375, 50.      ]), array([ 0.      ,  0.390625,  0.78125 ,  1.171875,  1.5625  ,  1.953125,
+        2.34375 ,  2.734375,  3.125   ,  3.515625,  3.90625 ,  4.296875,
+        4.6875  ,  5.078125,  5.46875 ,  5.859375,  6.25    ,  6.640625,
+        7.03125 ,  7.421875,  7.8125  ,  8.203125,  8.59375 ,  8.984375,
+        9.375   ,  9.765625, 10.15625 , 10.546875, 10.9375  , 11.328125,
+       11.71875 , 12.109375, 12.5     , 12.890625, 13.28125 , 13.671875,
+       14.0625  , 14.453125, 14.84375 , 15.234375, 15.625   , 16.015625,
+       16.40625 , 16.796875, 17.1875  , 17.578125, 17.96875 , 18.359375,
+       18.75    , 19.140625, 19.53125 , 19.921875, 20.3125  , 20.703125,
+       21.09375 , 21.484375, 21.875   , 22.265625, 22.65625 , 23.046875,
+       23.4375  , 23.828125, 24.21875 , 24.609375, 25.      , 25.390625,
+       25.78125 , 26.171875, 26.5625  , 26.953125, 27.34375 , 27.734375,
+       28.125   , 28.515625, 28.90625 , 29.296875, 29.6875  , 30.078125,
+       30.46875 , 30.859375, 31.25    , 31.640625, 32.03125 , 32.421875,
+       32.8125  , 33.203125, 33.59375 , 33.984375, 34.375   , 34.765625,
+       35.15625 , 35.546875, 35.9375  , 36.328125, 36.71875 , 37.109375,
+       37.5     , 37.890625, 38.28125 , 38.671875, 39.0625  , 39.453125,
+       39.84375 , 40.234375, 40.625   , 41.015625, 41.40625 , 41.796875,
+       42.1875  , 42.578125, 42.96875 , 43.359375, 43.75    , 44.140625,
+       44.53125 , 44.921875, 45.3125  , 45.703125, 46.09375 , 46.484375,
+       46.875   , 47.265625, 47.65625 , 48.046875, 48.4375  , 48.828125,
+       49.21875 , 49.609375, 50.      ]), array([ 0.      ,  0.390625,  0.78125 ,  1.171875,  1.5625  ,  1.953125,
+        2.34375 ,  2.734375,  3.125   ,  3.515625,  3.90625 ,  4.296875,
+        4.6875  ,  5.078125,  5.46875 ,  5.859375,  6.25    ,  6.640625,
+        7.03125 ,  7.421875,  7.8125  ,  8.203125,  8.59375 ,  8.984375,
+        9.375   ,  9.765625, 10.15625 , 10.546875, 10.9375  , 11.328125,
+       11.71875 , 12.109375, 12.5     , 12.890625, 13.28125 , 13.671875,
+       14.0625  , 14.453125, 14.84375 , 15.234375, 15.625   , 16.015625,
+       16.40625 , 16.796875, 17.1875  , 17.578125, 17.96875 , 18.359375,
+       18.75    , 19.140625, 19.53125 , 19.921875, 20.3125  , 20.703125,
+       21.09375 , 21.484375, 21.875   , 22.265625, 22.65625 , 23.046875,
+       23.4375  , 23.828125, 24.21875 , 24.609375, 25.      , 25.390625,
+       25.78125 , 26.171875, 26.5625  , 26.953125, 27.34375 , 27.734375,
+       28.125   , 28.515625, 28.90625 , 29.296875, 29.6875  , 30.078125,
+       30.46875 , 30.859375, 31.25    , 31.640625, 32.03125 , 32.421875,
+       32.8125  , 33.203125, 33.59375 , 33.984375, 34.375   , 34.765625,
+       35.15625 , 35.546875, 35.9375  , 36.328125, 36.71875 , 37.109375,
+       37.5     , 37.890625, 38.28125 , 38.671875, 39.0625  , 39.453125,
+       39.84375 , 40.234375, 40.625   , 41.015625, 41.40625 , 41.796875,
+       42.1875  , 42.578125, 42.96875 , 43.359375, 43.75    , 44.140625,
+       44.53125 , 44.921875, 45.3125  , 45.703125, 46.09375 , 46.484375,
+       46.875   , 47.265625, 47.65625 , 48.046875, 48.4375  , 48.828125,
+       49.21875 , 49.609375, 50.      ])]
+[array([1.02393893e-07, 6.24808711e-07, 6.57494809e-07, 4.49823586e-07,
+       4.23391450e-07, 3.98621982e-07, 3.73360881e-07, 3.38876278e-07,
+       2.94626008e-07, 2.47429891e-07, 2.27024472e-07, 2.25143478e-07,
+       2.29560315e-07, 2.47353674e-07, 2.18970921e-07, 1.73521438e-07,
+       1.54215467e-07, 1.51603789e-07, 1.54671564e-07, 1.33574571e-07,
+       1.18875660e-07, 1.11144075e-07, 1.15042666e-07, 1.16521177e-07,
+       1.05544671e-07, 9.19382335e-08, 8.87408463e-08, 7.92725374e-08,
+       7.77246199e-08, 7.60051655e-08, 7.35418773e-08, 7.27038091e-08,
+       7.20741932e-08, 6.20268061e-08, 5.81975295e-08, 5.22627802e-08,
+       5.25163895e-08, 5.46804588e-08, 5.64772022e-08, 5.00798895e-08,
+       5.20437464e-08, 5.34658902e-08, 5.25030215e-08, 4.64974008e-08,
+       4.22420478e-08, 4.29315388e-08, 4.49231450e-08, 4.37974978e-08,
+       4.37821777e-08, 4.17626341e-08, 3.92577891e-08, 3.63378293e-08,
+       3.67057429e-08, 3.36279469e-08, 3.04559341e-08, 3.06493865e-08,
+       3.07844194e-08, 2.88702852e-08, 2.88283553e-08, 2.96920588e-08,
+       2.94971639e-08, 2.75849730e-08, 2.98846117e-08, 2.91529127e-08,
+       2.37043701e-08, 2.14281309e-08, 2.37076870e-08, 2.53003491e-08,
+       2.37208046e-08, 1.87834551e-08, 1.94943719e-08, 2.06702886e-08,
+       2.04637206e-08, 1.97547077e-08, 1.78903021e-08, 1.58056656e-08,
+       1.56339530e-08, 1.61845961e-08, 1.60241035e-08, 1.52736542e-08,
+       1.50405538e-08, 1.46080423e-08, 1.25912295e-08, 1.24169029e-08,
+       1.15715316e-08, 1.14259370e-08, 1.28353322e-08, 1.15154309e-08,
+       1.10472430e-08, 1.06523332e-08, 9.35629172e-09, 9.80602914e-09,
+       1.08158074e-08, 1.04162685e-08, 9.05343778e-09, 8.89272291e-09,
+       8.56700121e-09, 8.58038840e-09, 8.65862475e-09, 8.70411545e-09,
+       8.09213673e-09, 7.71287884e-09, 7.54516162e-09, 7.31312381e-09,
+       6.80995279e-09, 6.98768839e-09, 7.09047450e-09, 7.05245934e-09,
+       6.85062447e-09, 7.21773306e-09, 6.77788497e-09, 6.19544513e-09,
+       6.06226832e-09, 6.05581101e-09, 5.30637675e-09, 5.38964946e-09,
+       5.86081290e-09, 5.82326074e-09, 5.69698523e-09, 5.89116702e-09,
+       6.06418941e-09, 6.17864138e-09, 5.53943217e-09, 5.49288904e-09,
+       5.25748029e-09, 5.58458296e-09, 5.94233367e-09, 5.81895005e-09,
+       2.84431294e-09]), array([7.74958347e-08, 5.03743071e-07, 4.95055923e-07, 4.20136524e-07,
+       4.33334721e-07, 4.15486792e-07, 3.99848177e-07, 3.75454852e-07,
+       3.25628502e-07, 2.84841940e-07, 2.76172475e-07, 2.69961719e-07,
+       2.64178775e-07, 2.56626563e-07, 2.45916343e-07, 2.07317379e-07,
+       2.05650326e-07, 2.15196935e-07, 2.00358606e-07, 1.71622265e-07,
+       1.55596170e-07, 1.50694882e-07, 1.35933259e-07, 1.39666392e-07,
+       1.49269914e-07, 1.24524276e-07, 1.18474801e-07, 1.09534509e-07,
+       1.05388490e-07, 9.46501593e-08, 9.47403883e-08, 1.04731536e-07,
+       8.57939743e-08, 9.29101607e-08, 8.84767701e-08, 8.17658218e-08,
+       8.76016811e-08, 8.85474180e-08, 7.59388422e-08, 6.66060827e-08,
+       6.68300242e-08, 6.53779933e-08, 6.40250176e-08, 6.14284289e-08,
+       6.61639882e-08, 6.50226641e-08, 5.85636416e-08, 6.08388937e-08,
+       5.92003130e-08, 5.79649815e-08, 5.42096355e-08, 4.71651731e-08,
+       4.56815745e-08, 4.17030674e-08, 3.86663260e-08, 3.77295337e-08,
+       3.63962344e-08, 3.63614139e-08, 3.98570144e-08, 3.83390608e-08,
+       3.53045952e-08, 3.20836881e-08, 3.18862865e-08, 2.81947379e-08,
+       2.52296689e-08, 2.59945907e-08, 2.73924064e-08, 2.89119540e-08,
+       2.58197015e-08, 2.38215739e-08, 2.52692765e-08, 2.47311521e-08,
+       2.24873721e-08, 2.33242348e-08, 2.08154641e-08, 2.01997458e-08,
+       1.99190720e-08, 2.15687478e-08, 2.04080293e-08, 1.96457217e-08,
+       1.85200554e-08, 1.88050150e-08, 1.96273115e-08, 2.07840383e-08,
+       1.93053467e-08, 1.65765657e-08, 1.53859411e-08, 1.44495552e-08,
+       1.49126766e-08, 1.48541004e-08, 1.50644551e-08, 1.57893425e-08,
+       1.44336327e-08, 1.39195460e-08, 1.48330101e-08, 1.42792732e-08,
+       1.32681464e-08, 1.30875839e-08, 1.18931119e-08, 1.22963804e-08,
+       1.22947840e-08, 1.15101973e-08, 1.29473349e-08, 1.23041834e-08,
+       1.14703402e-08, 1.15293290e-08, 1.16769277e-08, 1.18542599e-08,
+       1.13315431e-08, 1.17068872e-08, 1.00036646e-08, 9.30072148e-09,
+       9.60318112e-09, 1.00640122e-08, 9.42680388e-09, 9.71255656e-09,
+       9.33417070e-09, 7.88802980e-09, 7.94454809e-09, 9.09810606e-09,
+       9.23565706e-09, 8.00596956e-09, 8.37565606e-09, 8.80555374e-09,
+       8.91754943e-09, 9.12915767e-09, 8.98230038e-09, 8.67535221e-09,
+       4.26243386e-09]), array([9.42096298e-08, 4.82424795e-07, 4.87174657e-07, 4.01897443e-07,
+       3.86602638e-07, 3.61153199e-07, 3.41641366e-07, 3.15231741e-07,
+       3.10730622e-07, 2.79220236e-07, 2.62891042e-07, 2.49976507e-07,
+       2.36229345e-07, 2.10279420e-07, 1.93619120e-07, 1.98471398e-07,
+       1.69841450e-07, 1.69150258e-07, 1.70412500e-07, 1.50628466e-07,
+       1.29903572e-07, 1.28083712e-07, 1.05945563e-07, 1.16997073e-07,
+       1.15208425e-07, 1.05490011e-07, 1.07321335e-07, 9.04653719e-08,
+       8.44256736e-08, 8.62033055e-08, 8.40409592e-08, 8.95233565e-08,
+       8.55412140e-08, 7.40267376e-08, 6.61234536e-08, 5.86178827e-08,
+       6.03465690e-08, 6.64366721e-08, 6.01667020e-08, 5.43479283e-08,
+       5.23589114e-08, 5.49312543e-08, 5.82280705e-08, 4.91892365e-08,
+       4.88447505e-08, 4.65183108e-08, 4.44671056e-08, 3.83755337e-08,
+       4.19624708e-08, 4.40113116e-08, 3.91881407e-08, 3.55905220e-08,
+       3.91807600e-08, 3.70319044e-08, 3.26221504e-08, 3.38596768e-08,
+       3.22030100e-08, 3.47729739e-08, 3.15336784e-08, 2.87235111e-08,
+       2.71406186e-08, 2.52206563e-08, 2.78679551e-08, 2.93899477e-08,
+       2.69473997e-08, 2.48188704e-08, 2.15430167e-08, 2.32848492e-08,
+       2.43781313e-08, 2.35015625e-08, 1.98055620e-08, 1.86482978e-08,
+       2.01860787e-08, 1.91481827e-08, 1.95949435e-08, 2.01348253e-08,
+       1.84712778e-08, 1.66732759e-08, 1.58144992e-08, 1.75915852e-08,
+       1.81799425e-08, 1.60964366e-08, 1.53868642e-08, 1.52406321e-08,
+       1.46906629e-08, 1.45201690e-08, 1.29254867e-08, 1.21614987e-08,
+       1.18094881e-08, 1.20853501e-08, 1.21603313e-08, 1.19009353e-08,
+       1.08084575e-08, 1.04660476e-08, 1.12692327e-08, 1.00382085e-08,
+       1.04563890e-08, 1.19487574e-08, 1.06583385e-08, 1.04028981e-08,
+       1.03230199e-08, 9.60464330e-09, 9.16582796e-09, 8.80107852e-09,
+       9.08866548e-09, 8.85933764e-09, 8.51346932e-09, 8.08336262e-09,
+       7.51933348e-09, 7.08976325e-09, 7.23411219e-09, 7.85999928e-09,
+       7.29132377e-09, 6.87257111e-09, 7.63958398e-09, 7.41802168e-09,
+       7.07344685e-09, 6.78817572e-09, 7.14137065e-09, 7.33772014e-09,
+       6.80108168e-09, 6.73289643e-09, 6.08944712e-09, 6.17624017e-09,
+       6.76184548e-09, 7.01286051e-09, 6.95048849e-09, 6.78530786e-09,
+       3.21043285e-09]), array([6.42113171e-08, 3.42359771e-07, 3.98987422e-07, 3.61582520e-07,
+       3.31278447e-07, 3.22848607e-07, 2.90923884e-07, 2.55163996e-07,
+       2.41397144e-07, 2.33126740e-07, 2.16635057e-07, 2.06228221e-07,
+       1.93136444e-07, 1.87606639e-07, 1.81445571e-07, 1.71387543e-07,
+       1.47653227e-07, 1.42762236e-07, 1.24910503e-07, 1.12904228e-07,
+       1.21902652e-07, 1.08612941e-07, 9.55557678e-08, 9.57164701e-08,
+       9.65437769e-08, 8.60372530e-08, 8.77864863e-08, 7.90393081e-08,
+       6.30624141e-08, 6.53729445e-08, 7.36862071e-08, 7.82244637e-08,
+       7.79887377e-08, 6.46799220e-08, 6.67140639e-08, 5.97157230e-08,
+       5.10606177e-08, 5.59892907e-08, 5.61644776e-08, 4.37370641e-08,
+       3.81473376e-08, 4.15435103e-08, 3.68434108e-08, 3.96145162e-08,
+       3.93168755e-08, 3.34863521e-08, 3.49996678e-08, 3.55252972e-08,
+       3.29323995e-08, 3.33223502e-08, 3.48038804e-08, 3.81377217e-08,
+       3.48036290e-08, 3.52277361e-08, 3.21996558e-08, 2.90674546e-08,
+       2.71527770e-08, 2.43911598e-08, 2.54609589e-08, 2.36264155e-08,
+       2.19507684e-08, 2.29715800e-08, 2.29395248e-08, 2.19271296e-08,
+       2.40063073e-08, 2.09270292e-08, 1.88328830e-08, 1.74844536e-08,
+       1.96743232e-08, 1.92999827e-08, 1.73834926e-08, 1.51014712e-08,
+       1.58758857e-08, 1.56875310e-08, 1.55275875e-08, 1.45071993e-08,
+       1.39919265e-08, 1.44744059e-08, 1.44063808e-08, 1.45763392e-08,
+       1.34836431e-08, 1.18841631e-08, 1.29306865e-08, 1.30247405e-08,
+       1.19100611e-08, 1.15078498e-08, 1.03551573e-08, 1.15335914e-08,
+       1.32635449e-08, 1.17427099e-08, 1.05214222e-08, 9.76565715e-09,
+       9.86554356e-09, 1.02610867e-08, 1.02634682e-08, 9.33521212e-09,
+       9.25654077e-09, 9.19485342e-09, 9.09678662e-09, 8.93009809e-09,
+       9.74343378e-09, 8.33453341e-09, 7.92243089e-09, 8.27263566e-09,
+       7.56174913e-09, 7.16272635e-09, 7.12759950e-09, 7.23926456e-09,
+       7.23894478e-09, 7.48139435e-09, 7.50713068e-09, 7.40514242e-09,
+       6.76899254e-09, 5.85740623e-09, 5.98425828e-09, 6.37522690e-09,
+       5.96566571e-09, 5.61948414e-09, 5.56327712e-09, 5.83095703e-09,
+       5.98667092e-09, 5.92053776e-09, 5.62129510e-09, 5.77804762e-09,
+       6.60014401e-09, 6.31928056e-09, 6.56086095e-09, 5.65249077e-09,
+       2.47641654e-09]), array([4.01571672e-08, 2.43436006e-07, 2.70272571e-07, 2.33499010e-07,
+       2.29762895e-07, 2.26072832e-07, 2.09149097e-07, 1.71823189e-07,
+       1.62528988e-07, 1.44034301e-07, 1.40801739e-07, 1.42219152e-07,
+       1.23116977e-07, 1.22794719e-07, 1.14033172e-07, 1.10984901e-07,
+       1.12044980e-07, 9.90659892e-08, 1.02230579e-07, 9.28193528e-08,
+       8.48252643e-08, 7.81210442e-08, 7.58940734e-08, 7.16718598e-08,
+       6.95326053e-08, 6.90718948e-08, 5.81799952e-08, 5.53506333e-08,
+       5.28607080e-08, 5.11646848e-08, 4.79640725e-08, 4.93144307e-08,
+       5.10548374e-08, 4.86122038e-08, 4.28003883e-08, 3.64449234e-08,
+       3.74793087e-08, 3.34957134e-08, 3.17576638e-08, 3.12608808e-08,
+       3.19937457e-08, 3.13990447e-08, 3.12608217e-08, 3.05578386e-08,
+       2.96958201e-08, 2.75302641e-08, 2.60209943e-08, 2.75417508e-08,
+       2.50936291e-08, 2.40576399e-08, 2.21865436e-08, 2.39789757e-08,
+       2.30107751e-08, 2.35439302e-08, 2.07676561e-08, 1.90534263e-08,
+       2.22065969e-08, 2.24489275e-08, 2.05228370e-08, 1.88061539e-08,
+       1.78791986e-08, 1.60028489e-08, 1.45545674e-08, 1.46348963e-08,
+       1.57445615e-08, 1.55015825e-08, 1.37354308e-08, 1.24965694e-08,
+       1.40305606e-08, 1.41587842e-08, 1.26221135e-08, 1.31035617e-08,
+       1.30249879e-08, 1.16651729e-08, 1.13400265e-08, 1.17465101e-08,
+       1.11124697e-08, 1.08244647e-08, 9.82179413e-09, 9.80368685e-09,
+       9.82652223e-09, 9.74398728e-09, 9.46210129e-09, 8.60611096e-09,
+       9.32907273e-09, 9.21435640e-09, 9.22991994e-09, 8.35855428e-09,
+       8.25854391e-09, 8.62943780e-09, 8.01104306e-09, 7.45989811e-09,
+       7.36465413e-09, 7.14965479e-09, 7.27695765e-09, 7.16879184e-09,
+       7.07212929e-09, 5.93596097e-09, 6.11130518e-09, 6.22285752e-09,
+       6.23357704e-09, 6.18192316e-09, 6.29414441e-09, 5.91703296e-09,
+       5.91452261e-09, 5.66848492e-09, 6.35957946e-09, 6.03586172e-09,
+       5.56620451e-09, 5.71205115e-09, 5.93069034e-09, 6.44197476e-09,
+       5.18933455e-09, 5.01920660e-09, 4.97796052e-09, 5.00230994e-09,
+       4.80904570e-09, 4.70237848e-09, 5.09444328e-09, 5.31633895e-09,
+       5.07444800e-09, 4.50723017e-09, 4.27735884e-09, 4.77734924e-09,
+       5.33359519e-09, 4.65720676e-09, 4.60617580e-09, 4.42303697e-09,
+       2.03445651e-09]), array([4.14147119e-08, 1.92689286e-07, 2.21170765e-07, 2.23271829e-07,
+       2.14438893e-07, 1.96352571e-07, 1.74278962e-07, 1.47200759e-07,
+       1.39714646e-07, 1.20522639e-07, 1.23126491e-07, 1.16730198e-07,
+       1.09059206e-07, 1.01432055e-07, 9.26783430e-08, 7.82476211e-08,
+       7.21085018e-08, 7.67942101e-08, 7.27334873e-08, 6.26111463e-08,
+       5.18607788e-08, 5.53602953e-08, 5.37520885e-08, 4.75717788e-08,
+       4.45527664e-08, 4.19344450e-08, 3.90726461e-08, 3.76579318e-08,
+       3.45440505e-08, 3.73409788e-08, 3.47405336e-08, 3.26067562e-08,
+       3.00680174e-08, 2.90427491e-08, 2.88779800e-08, 2.57705928e-08,
+       2.47490891e-08, 2.58192209e-08, 2.49062452e-08, 2.48799701e-08,
+       2.26671038e-08, 2.24993990e-08, 2.14058964e-08, 2.05552462e-08,
+       1.89720669e-08, 2.00737148e-08, 1.97746856e-08, 1.74876486e-08,
+       1.68154804e-08, 1.54885315e-08, 1.50426677e-08, 1.53469393e-08,
+       1.41980981e-08, 1.30330098e-08, 1.42825990e-08, 1.53530068e-08,
+       1.31174811e-08, 1.29195959e-08, 1.13160640e-08, 1.13001065e-08,
+       1.15054300e-08, 1.19991663e-08, 1.07056746e-08, 1.04541077e-08,
+       1.03866590e-08, 9.67418976e-09, 1.06302854e-08, 9.97255963e-09,
+       1.00728959e-08, 1.02925387e-08, 9.10247484e-09, 8.26329168e-09,
+       8.14124270e-09, 8.45360131e-09, 8.32786896e-09, 7.70340830e-09,
+       7.04253825e-09, 7.19711079e-09, 6.85586653e-09, 7.31611202e-09,
+       7.05596021e-09, 6.96080126e-09, 6.97804898e-09, 6.56598573e-09,
+       6.67655987e-09, 6.59862191e-09, 6.02656334e-09, 6.36521596e-09,
+       6.84174230e-09, 6.37225103e-09, 5.24267289e-09, 5.11916994e-09,
+       4.66798752e-09, 5.36902967e-09, 5.50021134e-09, 5.33386993e-09,
+       4.92451724e-09, 5.18101091e-09, 5.25271743e-09, 4.91324768e-09,
+       4.84234005e-09, 4.69878928e-09, 4.30140010e-09, 4.35869309e-09,
+       3.98989816e-09, 3.64744371e-09, 4.13261250e-09, 3.86416696e-09,
+       3.24797573e-09, 3.51147034e-09, 3.84136212e-09, 3.72688720e-09,
+       3.36648542e-09, 3.49561636e-09, 3.54816921e-09, 3.67230281e-09,
+       3.43363439e-09, 3.31278708e-09, 3.21593129e-09, 3.07395952e-09,
+       3.07487791e-09, 3.30697167e-09, 3.22802339e-09, 3.30251719e-09,
+       2.95691242e-09, 3.01280587e-09, 3.09571462e-09, 3.06129452e-09,
+       1.74600413e-09])]
+
+![png](output_24_3.png)
+
+
+Detailed Comparison:
+Mean: Dataset 1 = 0.0019, Dataset 2 = 0.0019, Dataset 3 = 0.0017, Dataset 4 = 0.0016, Dataset 5 = 0.0014, Dataset 6 = 0.0014
+Std Dev: Dataset 1 = 0.0019, Dataset 2 = 0.0020, Dataset 3 = 0.0019, Dataset 4 = 0.0017, Dataset 5 = 0.0015, Dataset 6 = 0.0013
+Skewness: Dataset 1 = 3.5959, Dataset 2 = 3.0479, Dataset 3 = 3.0875, Dataset 4 = 3.2209, Dataset 5 = 2.9730, Dataset 6 = 2.8121
+Percentile 95: Dataset 1 = 0.0053, Dataset 2 = 0.0057, Dataset 3 = 0.0052, Dataset 4 = 0.0048, Dataset 5 = 0.0042, Dataset 6 = 0.0037
+Turbulence Intensity v: Dataset 1 = 0.0081, Dataset 2 = 0.0080, Dataset 3 = 0.0091, Dataset 4 = 0.0085, Dataset 5 = 0.0084, Dataset 6 = 0.0084
+Turbulence Intensity c: Dataset 1 = 0.9994, Dataset 2 = 1.0741, Dataset 3 = 1.1073, Dataset 4 = 1.0961, Dataset 5 = 1.0083, Dataset 6 = 0.9264
+Pearson r (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = 0.0110, Dataset 3 = N/A, Dataset 4 = N/A, Dataset 5 = N/A, Dataset 6 = N/A
+Spearman rho (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = -0.0011, Dataset 3 = N/A, Dataset 4 = N/A, Dataset 5 = N/A, Dataset 6 = N/A
+RMSE (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = 0.0028, Dataset 3 = N/A, Dataset 4 = N/A, Dataset 5 = N/A, Dataset 6 = N/A
+Pearson r (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = N/A, Dataset 3 = -0.0036, Dataset 4 = N/A, Dataset 5 = N/A, Dataset 6 = N/A
+Spearman rho (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = N/A, Dataset 3 = -0.0016, Dataset 4 = N/A, Dataset 5 = N/A, Dataset 6 = N/A
+RMSE (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = N/A, Dataset 3 = 0.0027, Dataset 4 = N/A, Dataset 5 = N/A, Dataset 6 = N/A
+Pearson r (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = N/A, Dataset 3 = N/A, Dataset 4 = 0.0237, Dataset 5 = N/A, Dataset 6 = N/A
+Spearman rho (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = N/A, Dataset 3 = N/A, Dataset 4 = 0.0041, Dataset 5 = N/A, Dataset 6 = N/A
+RMSE (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = N/A, Dataset 3 = N/A, Dataset 4 = 0.0026, Dataset 5 = N/A, Dataset 6 = N/A
+Pearson r (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = N/A, Dataset 3 = N/A, Dataset 4 = N/A, Dataset 5 = 0.0087, Dataset 6 = N/A
+Spearman rho (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = N/A, Dataset 3 = N/A, Dataset 4 = N/A, Dataset 5 = 0.0035, Dataset 6 = N/A
+RMSE (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = N/A, Dataset 3 = N/A, Dataset 4 = N/A, Dataset 5 = 0.0024, Dataset 6 = N/A
+Pearson r (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = N/A, Dataset 3 = N/A, Dataset 4 = N/A, Dataset 5 = N/A, Dataset 6 = 0.0083
+Spearman rho (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = N/A, Dataset 3 = N/A, Dataset 4 = N/A, Dataset 5 = N/A, Dataset 6 = 0.0045
+RMSE (vs Dataset 1): Dataset 1 = N/A, Dataset 2 = N/A, Dataset 3 = N/A, Dataset 4 = N/A, Dataset 5 = N/A, Dataset 6 = 0.0023
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+#Start visualisation single plots, adjustable
+#ReadIn/Choose data (PointObjects) from the analysis above, to use for the separat plot visualisations, import plotting functions
+
+#Specify files
+#DataPointsConc = [
+#    conc_ts[namelist[0]][files[0]],
+#    conc_ts[namelist[0]][files[1]]
+#]
+#All files read-in
+DataPointsConc=[]
+for i in range(0,len(files)):
+    DataPointsConc.append(
+        conc_ts[namelist[0]][files[i]]
+    )
+#Labels    
+labels = [f"Dataset {i}" for i in range(1,len(DataPointsConc)+1)]
+
+print(labels)
+print(DataPointsConc)
+
+#Load all functions for plotting
+from windtunnel.concentration.CompareDatasets import *
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+xLabel="Datasets"
+yLabel="Mean concentration[ppmV]" 
+dimensionless="False"
+xAchse = None 
+yAchse=None #(72,79) #None 
+error_values=0.5 #[0.5,0.2,0.1] #For error values overgive one number which is cast to all values, or an array if specify different errors for each measurements
+errorType="absolute"
+test = create_means(DataPointsConc,error_values,dimensionless=dimensionless,labels=None,xLabel=xLabel,yLabel=yLabel,xAchse=xAchse,yAchse=yAchse)
+#plt.savefig("Mean_comparison.png",test) #To save image
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+xLabel="Concentration[-]"
+yLabel="Density"
+dimensionless="True"
+create_pdf(DataPointsConc,dimensionless="True",labels=None,xLabel=xLabel,yLabel=yLabel,xAchse=None,yAchse=None)
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+xLabel="Datasets"
+yLabel="Concentration[ppmV]"
+xLabel="Datasets"
+yLabel="Concentration[ppmV]"
+create_histogram(DataPointsConc,dimensionless="False",labels=None,xLabel=xLabel,yLabel=yLabel,xAchse=None,yAchse=None)
+
+"""
+#import scipy.stats as stats
+#import seaborn as sns
+sns.histplot(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].net_concentration, kde=True)
+sns.displot(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].net_concentration,kind="kde")
+#mu = np.mean(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].net_concentration)
+#sigma = np.sqrt(np.var(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].net_concentration))
+#value = np.random.normal(loc=mu,scale=sigma,size=len(conc_ts[next(iter(conc_ts))][next(iter(conc_ts[next(iter(conc_ts))]))].net_concentration))
+#sns.distplot(value)
+"""
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+yLabel=None
+xLabel="Concentration[-]"
+dimensionless="True"
+create_cdf(DataPointsConc,dimensionless=dimensionless,labels=None,xLabel=xLabel,yLabel=yLabel,xAchse=None,yAchse=None)
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+test = powerDensityPlot(DataPointsConc,dimensionless="False",plot=True,labels=None,xLabel=None,yLabel=None,xAchse=None,yAchse=None)
+plt.savefig("test.png",test)
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+#Example of how to load/Read-in averages from file to use f.e. in map or for plotting
+from windtunnel.concentration.utils import load_avg_file
+
+file_path = "/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/windtunnel_software/Data/"
+file_name = "Point_Data_avg\BFS_BD3_MP01_000_01\_avg_BFS_BD3_MP01_000_01.ts#0" #Location of saved file# Usage example:
+# file_names = ["file1.ts#0", "file2.ts#0", "file3.ts#0"]
+# batch_combine_avg_stats(file_path, file_names, output_path, "combined_stats", "all_measurements.csv")
+# filenames, points, avg_data, stats_data = load_combined_data_from_csv(output_path + "combined_stats/all_measurements.csv")
+
+data_dict = load_avg_file(file_path + file_name)
+
+   
+print(data_dict.keys())
+print(data_dict['metadata'].keys())
+print(data_dict['metadata']['x (measurement relativ to source)']['value'])
+print(data_dict['metadata']['y (measurement relativ to source)']['value'])
+print(data_dict['metadata']['z (measurement relativ to source)']['value'])
+
+x = data_dict['metadata']['x (measurement relativ to source)']['value']
+y = data_dict['metadata']['y (measurement relativ to source)']['value']
+z = data_dict['metadata']['z (measurement relativ to source)']['value']
+c = data_dict['data'][0]['net_concentration [ppmV]']
+
+files
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+"""
+from windtunnel.concentration.utils import batch_combine_avg_stats, load_combined_data_from_csv
+
+file_names = [
+ "Point_Data_avg\BFS_BD3_MP01_000_01\_avg_BFS_BD3_MP01_000_01.ts#0", 
+ "Point_Data_avg\BFS_BD3_MP01_000_01\_avg_BFS_BD3_MP01_000_02.ts#0" 
+]
+batch_combine_avg_stats(file_path, file_names, output_path, "combined_stats", "all_measurements.csv")
+filenames, points, avg_data, stats_data = load_combined_data_from_csv(output_path + "combined_stats/all_measurements.csv")
+"""
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+import pandas as pd
+import os
+import glob
+import re
+from pathlib import Path
+
+def load_avg_file(filepath):
+    """
+    Load and parse an avg file to extract metadata and concentration data.
+    
+    Args:
+        filepath (str): Path to the avg file
+        
+    Returns:
+        dict: Parsed data containing metadata and concentration values
+    """
+    try:
+        with open(filepath, 'r', encoding='utf-8') as file:
+            content = file.read()
+        
+        # Extract filename from path and clean it
+        full_filename = Path(filepath).name
+        # Extract only the part starting with _avg_ and ending with .txt.ts#0
+        filename_match = re.search(r'(_avg_.*?\.txt\.ts#\d+)', full_filename)
+        filename = filename_match.group(1) if filename_match else full_filename
+        
+        # Parse metadata from header
+        metadata = {}
+        
+        # Extract geometric scale
+        scale_match = re.search(r'geometric scale: 1:(\d+\.?\d*)', content)
+        if scale_match:
+            metadata['geometric_scale'] = float(scale_match.group(1))
+        
+        # Extract measurement positions (in mm)
+        x_match = re.search(r'x \(measurement relativ to source\): ([\d\.-]+) \[mm\]', content)
+        y_match = re.search(r'y \(measurement relativ to source\): ([\d\.-]+) \[mm\]', content)
+        z_match = re.search(r'z \(measurement relativ to source\): ([\d\.-]+) \[mm\]', content)
+        
+        if x_match and y_match and z_match:
+            # Convert to full scale (mm to m, then scale up)
+            scale = metadata.get('geometric_scale', 200.0)
+            metadata['x_fs'] = float(x_match.group(1)) / 1000.0 * scale  # mm to m, then scale
+            metadata['y_fs'] = float(y_match.group(1)) / 1000.0 * scale
+            metadata['z_fs'] = float(z_match.group(1)) / 1000.0 * scale
+        
+        # Find the data line (last non-comment line)
+        lines = content.strip().split('\n')
+        data_line = None
+        for line in reversed(lines):
+            if line.strip() and not line.strip().startswith('#'):
+                data_line = line.strip()
+                break
+        
+        if data_line:
+            # Parse concentration data
+            values = data_line.split()
+            if len(values) >= 3:
+                metadata['c_star'] = float(values[0])
+                metadata['net_concentration'] = float(values[1])
+                metadata['full_scale_concentration'] = float(values[2])
+        
+        metadata['filename'] = filename
+        return metadata
+        
+    except Exception as e:
+        print(f"Error reading {filepath}: {e}")
+        return None
+
+def load_stats_file(filepath):
+    """
+    Load and parse a stats file to extract metadata and statistical concentration data.
+    
+    Args:
+        filepath (str): Path to the stats file
+        
+    Returns:
+        dict: Parsed data containing metadata and statistical values
+    """
+    try:
+        with open(filepath, 'r', encoding='utf-8') as file:
+            content = file.read()
+        
+        # Extract filename from path and clean it
+        full_filename = Path(filepath).name
+        # Extract only the part starting with _stats_ and ending with .txt.ts#0
+        filename_match = re.search(r'(_stats_.*?\.txt\.ts#\d+)', full_filename)
+        filename = filename_match.group(1) if filename_match else full_filename
+        
+        # Parse metadata from header (same as avg file)
+        metadata = {}
+        
+        # Extract geometric scale
+        scale_match = re.search(r'geometric scale: 1:(\d+\.?\d*)', content)
+        if scale_match:
+            metadata['geometric_scale'] = float(scale_match.group(1))
+        
+        # Extract measurement positions (in mm)
+        x_match = re.search(r'x \(measurement relativ to source\): ([\d\.-]+) \[mm\]', content)
+        y_match = re.search(r'y \(measurement relativ to source\): ([\d\.-]+) \[mm\]', content)
+        z_match = re.search(r'z \(measurement relativ to source\): ([\d\.-]+) \[mm\]', content)
+        
+        if x_match and y_match and z_match:
+            # Convert to full scale (mm to m, then scale up)
+            scale = metadata.get('geometric_scale', 200.0)
+            metadata['x_fs'] = float(x_match.group(1)) / 1000.0 * scale  # mm to m, then scale
+            metadata['y_fs'] = float(y_match.group(1)) / 1000.0 * scale
+            metadata['z_fs'] = float(z_match.group(1)) / 1000.0 * scale
+        
+        # Find the statistical data line (should be the first non-comment line after header)
+        lines = content.strip().split('\n')
+        data_line = None
+        for line in lines:
+            if line.strip() and not line.strip().startswith('#'):
+                data_line = line.strip()
+                break
+        
+        if data_line:
+            # Parse statistical data - should have 12 values
+            # Order: means(3), percentiles95(3), percentiles5(3), peak2mean(3)
+            values = data_line.split()
+            if len(values) >= 12:
+                # Means
+                metadata['c_star'] = float(values[0])
+                metadata['net_concentration'] = float(values[1])
+                metadata['full_scale_concentration'] = float(values[2])
+                
+                # 95th percentiles
+                metadata['percentiles95_c_star'] = float(values[3])
+                metadata['percentiles95_net_concentration'] = float(values[4])
+                metadata['percentiles95_full_scale_concentration'] = float(values[5])
+                
+                # 5th percentiles
+                metadata['percentiles5_c_star'] = float(values[6])
+                metadata['percentiles5_net_concentration'] = float(values[7])
+                metadata['percentiles5_full_scale_concentration'] = float(values[8])
+                
+                # Peak2Mean ratios
+                metadata['peak2mean_c_star'] = float(values[9])
+                metadata['peak2mean_net_concentration'] = float(values[10])
+                metadata['peak2mean_full_scale_concentration'] = float(values[11])
+        
+        metadata['filename'] = filename
+        return metadata
+        
+    except Exception as e:
+        print(f"Error reading {filepath}: {e}")
+        return None
+
+def combine_to_csv(file_names, base_path, file_type='avg', output_filename='combined_data.csv'):
+    """
+    Combine specific avg or stats files into a single CSV file.
+    
+    Args:
+        file_names (list): Array of specific filenames to process
+        base_path (str): Base directory path containing the files
+        file_type (str): Type of files to process ('avg' or 'stats')
+        output_filename (str): Name of the output CSV file
+        
+    Returns:
+        pd.DataFrame: Combined data as a pandas DataFrame
+    """
+    
+    # Define subdirectory and load function based on file type
+    if file_type.lower() == 'avg':
+        #subdirectory = 'Point_Data_avg'
+        load_function = load_avg_file
+    elif file_type.lower() == 'stats':
+        #subdirectory = 'Point_Data_stats'
+        load_function = load_stats_file
+    else:
+        raise ValueError("file_type must be 'avg' or 'stats'")
+    
+    # Build full file paths from the provided filenames
+    file_paths = []
+    for filename in file_names:
+        # Search for the file in the subdirectory structure
+        search_pattern = os.path.join(base_path, '**', filename)
+        matches = glob.glob(search_pattern, recursive=True)
+        
+        if matches:
+            file_paths.extend(matches)
+        else:
+            print(f"Warning: File '{filename}' not found in {base_path}{filename}")
+    
+    if not file_paths:
+        print(f"No valid {file_type} files found from the provided list")
+        return None
+    
+    print(f"Processing {len(file_paths)} {file_type} files")
+    
+    # Process all files
+    all_data = []
+    for filepath in file_paths:
+        print(f"Processing: {filepath}")
+        data = load_function(filepath)
+        if data:
+            all_data.append(data)
+    
+    if not all_data:
+        print("No valid data found in any files")
+        return None
+    
+    # Create DataFrame
+    df = pd.DataFrame(all_data)
+    
+    # Define column order based on file type
+    if file_type.lower() == 'avg':
+        columns = [
+            'filename', 'x_fs', 'y_fs', 'z_fs',
+            'c_star', 'net_concentration', 'full_scale_concentration'
+        ]
+        # Rename columns to match desired format
+        column_mapping = {
+            'filename': 'Filename',
+            'x_fs': 'X_fs [m]',
+            'y_fs': 'Y_fs [m]',
+            'z_fs': 'Z_fs [m]',
+            'c_star': 'Avg_c_star [-]',
+            'net_concentration': 'Avg_net_concentration [ppmV]',
+            'full_scale_concentration': 'Avg_full_scale_concentration [ppmV]'
+        }
+    else:  # stats
+        columns = [
+            'filename', 'x_fs', 'y_fs', 'z_fs',
+            'c_star', 'net_concentration', 'full_scale_concentration',
+            'percentiles95_c_star', 'percentiles95_net_concentration', 'percentiles95_full_scale_concentration',
+            'peak2mean_c_star', 'peak2mean_net_concentration', 'peak2mean_full_scale_concentration'
+        ]
+        # Rename columns to match desired format
+        column_mapping = {
+            'filename': 'Filename',
+            'x_fs': 'X_fs [m]',
+            'y_fs': 'Y_fs [m]',
+            'z_fs': 'Z_fs [m]',
+            'c_star': 'Avg_c_star [-]',
+            'net_concentration': 'Avg_net_concentration [ppmV]',
+            'full_scale_concentration': 'Avg_full_scale_concentration [ppmV]',
+            'percentiles95_c_star': 'Percentiles 95_cstar',
+            'percentiles95_net_concentration': 'Percentiles 95_net_concentration',
+            'percentiles95_full_scale_concentration': 'percentiles95_full_scale_concentration',
+            'peak2mean_c_star': 'Peak2MeanRatio_cstar',
+            'peak2mean_net_concentration': 'Peak2MeanRatio_net_conc',
+            'peak2mean_full_scale_concentration': 'Peak2MeanRatio_full_scale_conc'
+        }
+    
+    # Select and rename columns
+    df = df[columns].rename(columns=column_mapping)
+    
+    # Fill NaN values with 0.0
+    df = df.fillna(0.0)
+    
+    # Save to CSV
+    df.to_csv(output_filename, index=False)
+    print(f"Data saved to {output_filename}")
+    
+    return df
+
+
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+#from windtunnel.concentration.utils import batch_combine_data, load_combined_data_from_csv
+
+#normal test
+file_names = ["_stats_" + file for file in files]
+
+#stats test
+#file_names = [
+#    r"Point_Data_stats\UBA_GA_02_04_01_000_1_00\_stats_UBA_GA_02_04_01_000_1_001.txt.ts#0",
+#    r"Point_Data_stats\UBA_GA_02_04_01_000_1_00\_stats_UBA_GA_02_04_01_000_1_001.txt.ts#1",
+#    r"Point_Data_stats\UBA_GA_02_04_01_000_1_00\_stats_UBA_GA_02_04_01_000_1_001.txt.ts#2",
+#    r"Point_Data_stats\UBA_GA_02_04_01_000_1_00\_stats_UBA_GA_02_04_01_000_1_001.txt.ts#3",
+#    r"Point_Data_stats\UBA_GA_02_04_01_000_1_00\_stats_UBA_GA_02_04_01_000_1_001.txt.ts#4",
+#    r"Point_Data_stats\UBA_GA_02_04_01_000_1_00\_stats_UBA_GA_02_04_01_000_1_001.txt.ts#5"
+#]
+
+#base_path =output_path
+#base_path = output_path + "Files/Point_Data_avg/UBA_GA_02_04_01_000_1_00"
+base_path = output_path + "Files/Point_Data_stats/UBA_GA_02_04_01_000_1_00/"
+#combine_to_csv(file_names, base_path, file_type='avg', output_filename=output_path+'combined_data.csv')
+combine_to_csv(file_names, base_path, file_type='stats', output_filename=output_path+'combined_data.csv')
+
+
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+batch_combine_data(file_path, file_names, output_path, 
+                  file_type="both")
+----
+
+
++*In[29]:*+
+[source, ipython3]
+----
+import csv
+
+def load_csv(file_path):
+    """
+    Load data from a CSV file returns points and values lists for printing/or further analysis.
+    
+    Args:
+        filename (str): Path to the CSV file
+        
+    Returns:
+        tuple: (points, values) where:
+            - points is a list of (x,y,z) tuples
+            - values is a list of concentration values
+    """
+    points = []
+    values = []
+    
+    with open(file_path, 'r') as file:
+        # Skip the header line
+        next(file)
+        csv_reader = csv.reader(file)
+        for row in csv_reader:
+            # Check if we have enough elements in the row
+            if len(row) == 4:
+                x = float(row[0])
+                y = float(row[1])
+                z = float(row[2])
+                c_star = float(row[3])
+                
+            elif len(row) > 4:
+                #try:
+                # Parse data, assuming the format matches X_fs [m],Y_fs [m],Z_fs [m],C* [-]
+                file = row[0]
+                x = float(row[1])
+                y = float(row[2])
+                z = float(row[3])
+                c_star = float(row[4])
+                if len(row) >=6:
+                    c_net = float(row[5])
+                    if len(row) >=7:
+                        c_fs = float(row[6])
+                
+            # Add to our lists
+            points.append((x, y, z))
+            values.append(c_star)
+                #except ValueError:
+                #    # Skip rows that can't be converted to float
+                #    print(f"Skipping invalid row: {row}")
+    
+    return points, values
+----
+
+
++*In[37]:*+
+[source, ipython3]
+----
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.patches as mpatches  # Änderungen: Alias für patches
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+#from matplotlib.colors import BoundaryNorm
+from matplotlib.cm import *
+from windtunnel.concentration.utils import load_data_from_csv
+
+#Daten einlesen
+readFromCsv=True #If False overgive through punkte = [(x,y,z,c),..] manually
+path = "/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/Building_plots/Python code/messpunkte_1.csv"
+path2 = "/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/ExampleData/Results/combined_data.csv"
+
+#Bebauung auswählen
+number_houses,houses_spacing_btw,triangle_points,x0 = 1,0,np.array([[-5, 4.23],[5, 4.23],[0, 7.118]]),-5                               #Bebauung 1
+#number_houses,houses_spacing_btw,triangle_points,x0 = 9,10,np.array([[-85, 4.23],[-75, 4.23],[-80, 7.118]]),-85        #Bebauung 2
+#number_houses,houses_spacing_btw,triangle_points,x0 = 7,20,np.array([[-95, 4.23],[-85, 4.23],[-90, 7.118]]),-95        #Bebauung 3
+#number_houses,houses_spacing_btw,triangle_points,x0 = 5,40,np.array([[-105, 4.23],[-95, 4.23],[-100, 7.118]]),-105     #Bebaunng 4
+#number_houses,houses_spacing_btw,triangle_points,x0 = 6,[15,20],np.array([[-90, 4.23],[-80, 4.23],[-85, 7.118]]),-90    #Bebaunng 5
+
+# Bereiche und Meter pro Kästchen festlegen, Bleibt eigentlich überall gleich
+x_min, x_max = -110, 110 #-50,50 #-10, 110
+z_min, z_max = 0, 40
+spacing = 5  # Abstand zwischen Linien/Kästchen
+z0 = 0
+#Settings für alle Häuser
+rect_width = 10  # von -5 bis 5
+rect_height = 4.23
+
+#Settings for colorbar and figure
+# --- Color coding and thresholds ---
+thresholds = [0, 1]  # lower and upper thresholds (exclusive)
+cmap = plt.cm.RdBu   # colormap for intermediate values
+cmap = cmap.reversed()
+figSize = (20,8)
+
+#Messpunkte einlesen
+if(readFromCsv==True):
+    points,values= load_csv(path)
+    punkte = [(points[i][0],points[i][1],points[i][2],values[i]) for i in range(0,len(points))]
+
+
+#Anzahl Spacing zwischen häusern und Häuseranzahl
+if(isinstance(houses_spacing_btw,list)):
+    houses_spacing = [0,0]
+    houses_spacing[0] = 10 + houses_spacing_btw[0] #10#20 #Abstand zwischen Häuserkanten (Mittelpunkte Häuser + Abstand)
+    houses_spacing[1] = 10 + houses_spacing_btw[1] #10#20 #Abstand zwischen Häuserkanten (Mittelpunkte Häuser + Abstand)
+
+else:
+    houses_spacing = 10 + houses_spacing_btw #10#20 #Abstand zwischen Häuserkanten (Mittelpunkte Häuser + Abstand)
+
+# Linienanzahl berechnen
+x_lines = int(np.ceil((x_max - x_min) / spacing))
+z_lines = int(np.ceil((z_max - z_min) / spacing))
+# Erstellen der Figur und Achse
+fig, ax = plt.subplots(figsize=figSize)
+# Gitterlinien für X-Z Ebene
+for i in range(x_lines + 1):
+    x = x_min + i * spacing
+    ax.plot([x, x], [z_min, z_max], color='gray', linewidth=0.5)
+for j in range(z_lines + 1):
+    z = z_min + j * spacing
+    ax.plot([x_min, x_max], [z, z], color='gray', linewidth=0.5)
+
+for i in range(0,number_houses):   
+    #Rechteck
+    rect = plt.Rectangle((x0, z0), rect_width, rect_height, linewidth=1, edgecolor='black', facecolor='black')
+    ax.add_patch(rect)
+    #Dreieck fürs Dach
+    triangle = plt.Polygon(triangle_points, closed=True, color='black')
+    ax.add_patch(triangle)
+    #Update to next position
+    #Bebauung 5
+    if(isinstance(houses_spacing_btw,list)):
+        print(i%2)
+        x0=x0 + houses_spacing[(i+1)%2] #Rechteck
+        triangle_points[0][0] = triangle_points[0][0] + houses_spacing[(i+1)%2]
+        triangle_points[1][0] = triangle_points[1][0] + houses_spacing[(i+1)%2]
+        triangle_points[2][0] = triangle_points[2][0] + houses_spacing[(i+1)%2]
+    #Alle anderen
+    else:
+        x0=x0 + houses_spacing #Rechteck
+        triangle_points[0][0] = triangle_points[0][0] + houses_spacing #Dach
+        triangle_points[1][0] = triangle_points[1][0] + houses_spacing
+        triangle_points[2][0] = triangle_points[2][0] + houses_spacing
+
+
+# Nur Punkte mit y=0 für Horizontal
+punkte_y0 = [p for p in punkte if p[1] == 0]
+# Farbzuordnungsfunktion
+def get_color(c):
+    if c > 9:
+        return 'red'
+    elif c < 1:
+        return 'blue'
+    else:
+        ratio = (c - 1) / 8
+        return plt.cm.RdBu(ratio)  # Korrekte Nutzung der colormap
+
+# Punkte plotten
+for (x, y, z, c) in punkte_y0:
+    if x_min <= x <= x_max and z_min <= z <= z_max:
+        color = get_color(c)
+        ax.plot(x, z, 'o', color=color, markersize=12)
+        ax.text(x + 1.5, z, f'{c:.1f}', fontsize=8, verticalalignment='center')
+# Achsenanpassung
+ax.set_xlim(x_min, x_max)
+ax.set_ylim(z_min, z_max)
+ax.set_aspect('equal')
+#ax.axhline(0, color='blue', linewidth=1)
+#ax.axvline(0, color='blue', linewidth=1)
+ax.set_xlabel('x[m]')
+ax.set_ylabel('z [m]')
+ax.set_title(f'GA House spacing: {houses_spacing_btw}m')
+ax.grid(False)
+# --- Legend ---
+red_patch = mpatches.Patch(color='red', label=f'c > {thresholds[1]}')
+blue_patch = mpatches.Patch(color='blue', label=f'c < {thresholds[0]}')
+plt.legend(loc="upper left",handles=[red_patch, blue_patch],fontsize=10)
+# --- Colorbar---
+norm = BoundaryNorm([float('-inf'), thresholds[0], thresholds[1], float('inf')], cmap.N)
+sm = ScalarMappable(norm=plt.Normalize(thresholds[0], thresholds[1]), cmap=cmap)
+divider = make_axes_locatable(ax)
+colorbar_axes = divider.append_axes("right",size="5%",pad=0.1)
+cbar = plt.colorbar(sm, ax=ax, orientation='vertical',cax=colorbar_axes)
+cbar.set_label('c*[-]')
+
+plt.show()
+----
+
+
++*Out[37]:*+
+----
+![png](output_37_0.png)
+----
+
+
++*In[166]:*+
+[source, ipython3]
+----
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jun 25 20:38:09 2025
+
+@author: knarf
+"""
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.patches as mpatches
+import matplotlib as mpl
+
+# Bereiche
+x_min, x_max = -10, 110
+y_min, y_max = -30, 30
+spacing = 5
+
+# Gitterlinien zeichnen
+fig, ax = plt.subplots(figsize=(14, 8))
+for x in np.arange(x_min, x_max + spacing, spacing):
+    ax.plot([x, x], [y_min, y_max], color='gray', linewidth=0.5)
+for y in np.arange(y_min, y_max + spacing, spacing):
+    ax.plot([x_min, x_max], [y, y], color='gray', linewidth=0.5)
+
+# Funktion zum Hinzufügen von schwarzen Rechtecken
+def add_black_rectangle(x, y, width=10, height=10):
+    rect = plt.Rectangle((x, y), width, height, color='black')
+    ax.add_patch(rect)
+
+# Ursprüngliche schwarzen Felder: 15x15 Meter im Ursprung (0,0)
+# Position des 15x15 Rechtecks im Koordinatenursprung
+orig_rect_x = -10/2  # Mitte bei 0,0, also x= -7.5
+orig_rect_y = -10/2  # y= -7.5
+add_black_rectangle(orig_rect_x, orig_rect_y, width=10, height=10)
+
+# Neue schwarze Rechtecke an verschiedenen Positionen (Beispiele)
+positions = [
+    (15, 5),
+    (-5, 15),
+    (-5, -25),
+    (15, -15),
+    (15, -35),
+    (15, 25),
+    (35, 15),
+    (35, -5),
+    (35, -25),
+    (55, -15),
+    (55, -35),
+    (55, 5),
+    (55, 25),
+    (75, 15),
+    (75, -5),
+    (75, -25),
+    (95, -35),
+    (95, -15),
+    (95, 5),
+    (95, 25),
+]
+for (x, y) in positions:
+    add_black_rectangle(x, y, width=10, height=10)
+
+# Punkt-Daten, unverändert
+punkte = [(50, 0, 2, 8.0811129906061),
+    (0, 0, 0, None),
+    (0, 0, 0, None),
+    (50, 15, 2, 3.92475487135893),
+    (0, 0, 0, None),
+    (0, 0, 0, None),
+    (0, 0, 0, None),
+    (0, 0, 0, None),
+    (7.5, 0, 2, 6.65164122168862),
+    (10, 0, 2, 6.19026498307227),
+    (12.5, 0, 2, 5.52762603635695),
+    (15, 0, 2, 5.70030368873425),
+    (17.5, 0, 2, 6.77501508465002),
+    (20, 0, 2, 8.12403269141749),
+    (25, 0, 2, 11.2717136599455),
+    (30, 0, 2, 12.8241234543974),
+    (50, 0, 2, 7.94929705114026),
+    (100, 0, 2, 4.37599132679174),
+    (0, 0, 0, None),
+    (0, 0, 0, None),
+    (10, 0, 2, 6.31608275524858),
+    (0, 0, 0, None),
+    (0, 0, 0, None),
+    (10, 0, 8, 103.966727648895),
+    (10, 0, 10, 61.4747608231652),
+    (10, 0, 12, 13.0625260357662),
+    (50, 0, 2, 8.00066851578678),
+    (50, 0, 6, 8.93534732089732),
+    (50, 0, 10, 8.8437081644944),
+    (50, 0, 14, 4.6896995238657),
+    (50, 0, 18, 1.55370375595117),
+    (50, 0, 22, 0.289574204549816),
+    (0, 0, 0, None),
+    (10, 2, 2, 4.83596903950623),
+    (10, 4, 2, 2.21680368728491),
+    (10, 6, 2, 0.607257632042779),
+    (10, 8, 2, 0.30905131154923),
+    (10, 10, 2, 0.167295110283912),
+    (10, -4, 2, 1.67384774886721),
+    (10, -8, 2, 0.217813358173836),
+    (25, 0, 1, 10.0849212843813),
+    (25, 0, 2, 11.1308819551518),
+    (25, 0, 4, 15.8138029246341),
+    (25, 0, 8, 21.3538836795309),
+    (25, 0, 12, 12.8776130259445),
+    (25, 0, 16, 1.91348999012856),]
+
+# Punkte filtern
+gefilterte_punkte_z2 = [p for p in punkte if p[2] == 2]
+# Farbenfunktion
+def get_color(c):
+    if c > 9:
+        return 'red'
+    elif c < 1:
+        return 'blue'
+    else:
+        ratio = (c - 1) / (9 - 1)
+        return plt.cm.RdBu(1 - ratio)
+
+# Plotten mit Beschriftung der Konzentration
+for (x, y, z, c) in gefilterte_punkte_z2:
+    if x_min <= x <= x_max and y >= y_min and y <= y_max:
+        color = get_color(c)
+        ax.plot(x, y, 'o', color=color, markersize=12)
+        # Konzentration mit einer Nachkommastelle anzeigen
+        ax.text(x + 0.5, y, f'{c:.1f}', fontsize=8, verticalalignment='center')
+
+# Achsen & Legende
+ax.set_xlim(x_min, x_max)
+ax.set_ylim(y_min, y_max)
+ax.set_aspect('equal')
+ax.axhline(0, color='blue', linewidth=1)
+ax.axvline(0, color='blue', linewidth=1)
+ax.set_xlabel('X-Achse (Meter)')
+ax.set_ylabel('Y-Achse (Meter)')
+ax.set_title('Nur Punkte mit z=2 (Konzentration mit 1 Nachkommastelle)')
+ax.grid(False)
+
+# Legende für Farben
+red_patch = mpatches.Patch(color='red', label='c > 9')
+blue_patch = mpatches.Patch(color='blue', label='c < 1')
+plt.legend(handles=[red_patch, blue_patch])
+
+# Rotes Kreuz im Koordinatenursprung
+# Erstellen eines roten Kreises
+circle = plt.Circle((0, 0), radius=1, color='red', fill=False, linewidth=2)
+ax.add_patch(circle)
+
+# Erstellen der diagonalen Linien für das Kreuz
+line1 = plt.Line2D([0 - 1.5, 0 + 1.5], [0 - 1.5, 0 + 1.5], color='red', linewidth=2)
+line2 = plt.Line2D([0 - 1.5, 0 + 1.5], [0 + 1.5, 0 - 1.5], color='red', linewidth=2)
+ax.add_line(line1)
+ax.add_line(line2)
+
+plt.show()
+
+----
+
+
++*Out[166]:*+
+----
+![png](output_38_0.png)
+----
+
+
++*In[72]:*+
+[source, ipython3]
+----
+#Hier wäre es wahrscheinlich sinnvoller gewesen mit einer Funktion zu arbeiten und nur die Koordinaten generieren zu lassen
+#Zum beispiel mit einer weiteren Funktion oder einem llm
+
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.patches as mpatches
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.colors import BoundaryNorm
+from matplotlib.cm import ScalarMappable
+from windtunnel.concentration.utils import load_data_from_csv
+
+# Daten einlesen
+readFromCsv = True  # If False overgive through punkte = [(x,y,z,c),..] manually
+path = "/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/Building_plots/Python code/messpunkte_1.csv"
+path2 = "/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/WTSoftwareUtilitiesShare/ExampleData/Results/combined_data.csv"
+
+# Bebauung auswählen
+#number_houses, houses_spacing_btw, triangle_points, x0, y0 = 1, 0, np.array([[-5, 4.23], [5, 4.23], [0, 7.118]]), -5, -5  # Bebauung 1
+#number_houses,number_houses_y_i, houses_spacing_btw, triangle_points, x0, y0 = 9,[7,6], 10, np.array([[-85, -65], [-75, -55], [-80, -60]]), -85, -65  # Bebauung 2
+#number_houses,number_houses_y_i, houses_spacing_btw, triangle_points, x0, y0 = 7,[6,7], 20, np.array([[-95, -100], [-85, -90], [-90, -95]]), -95, -100  # Bebauung 3
+number_houses, number_houses_y_i,houses_spacing_btw, triangle_points, x0, y0 = 5,[5,4], 40, np.array([[-105, -105], [-95, -95], [-100, -100]]), -105, -105  # Bebauung 4
+#number_houses, houses_spacing_btw, triangle_points, x0, y0 = 6, [15, 20], np.array([[-90, 4.23], [-80, 4.23], [-85, 7.118]]), -90, -5  # Bebauung 5
+
+y_start_i = [y0,y0+houses_spacing/2]
+
+# Bereiche und Meter pro Kästchen festlegen
+x_min, x_max = -110, 110
+y_min, y_max = -120, 120
+spacing = 5  # Abstand zwischen Linien/Kästchen
+z_level = 2  # Höhe für die horizontale Ebene
+
+# Settings für alle Häuser
+rect_width = 10  # von -5 bis 5
+rect_height = 10  # für horizontale Ansicht
+
+# Settings for colorbar and figure
+# --- Color coding and thresholds ---
+thresholds = [0, 1]  # lower and upper thresholds (exclusive)
+cmap = plt.cm.RdBu   # colormap for intermediate values
+cmap = cmap.reversed()
+figSize = (20, 8)
+
+# Messpunkte einlesen
+if readFromCsv:
+    points, values = load_data_from_csv(path)
+    punkte = [(points[i][0], points[i][1], points[i][2], values[i]) for i in range(0, len(points))]
+else:
+    # Fallback data if CSV reading fails
+    punkte = [(50, 0, 2, 8.0811129906061),
+              (0, 0, 0, None),
+              (7.5, 0, 2, 6.65164122168862),
+              (10, 0, 2, 6.19026498307227),
+              (12.5, 0, 2, 5.52762603635695),
+              (15, 0, 2, 5.70030368873425),
+              (17.5, 0, 2, 6.77501508465002),
+              (20, 0, 2, 8.12403269141749),
+              (25, 0, 2, 11.2717136599455),
+              (30, 0, 2, 12.8241234543974),
+              (50, 0, 2, 7.94929705114026),
+              (100, 0, 2, 4.37599132679174),
+              (50, 15, 2, 3.92475487135893)]
+
+# Anzahl Spacing zwischen häusern und Häuseranzahl
+if isinstance(houses_spacing_btw, list):
+    houses_spacing = [0, 0]
+    houses_spacing[0] = 10 + houses_spacing_btw[0]  # Abstand zwischen Häuserkanten (longitudinal)
+    houses_spacing[1] = 10 + houses_spacing_btw[1]  # Abstand zwischen Häuserkanten (longitudinal)
+    # Für Bebauung 5: y-Spacing bleibt konstant bei 5m zwischen Häuserkanten
+    houses_y_spacing = 10 + 5  # konstant 5m zwischen Häuserkanten
+else:
+    houses_spacing = 10 + houses_spacing_btw  # Abstand zwischen Häuserkanten (Mittelpunkte Häuser + Abstand)
+
+# Linienanzahl berechnen
+x_lines = int(np.ceil((x_max - x_min) / spacing))
+y_lines = int(np.ceil((y_max - y_min) / spacing))
+
+# Erstellen der Figur und Achse
+fig, ax = plt.subplots(figsize=figSize)
+
+# Gitterlinien für X-Y Ebene (Draufsicht)
+for i in range(x_lines + 1):
+    x = x_min + i * spacing
+    ax.plot([x, x], [y_min, y_max], color='gray', linewidth=0.5)
+for j in range(y_lines + 1):
+    y = y_min + j * spacing
+    ax.plot([x_min, x_max], [y, y], color='gray', linewidth=0.5)
+
+y_start = y0
+# Häuser plotten
+for i in range(number_houses):   #x
+    y0 = y_start_i[i%2]
+    number_houses_y = number_houses_y_i[i%2]
+    print(number_houses_y)
+    for j in range(number_houses_y): #y 
+        
+        # Rechteck (Draufsicht)
+        rect = plt.Rectangle((x0, y0), rect_width, rect_height, linewidth=1, edgecolor='black', facecolor='black')
+        ax.add_patch(rect)
+        # Update to next position
+        # Bebauung 5 (spezielle Behandlung)
+        if isinstance(houses_spacing, list):
+            # Alternating spacing pattern für x-direction
+            x0 = x0 + houses_spacing[(i + 1) % 2]
+            # y-position alterniert zwischen zwei Reihen
+            if i % 2 == 0:
+                y0 = y0  # erste Reihe
+            else:
+                y0 = y0 + houses_y_spacing if i == 1 else y0 - houses_y_spacing  # zweite Reihe
+        # Alle anderen Bebauungen (1-4)
+        else:
+            y0 = y0 + houses_spacing
+            #print(x0)
+            #print(y0)
+    x0 = x0 + houses_spacing
+
+# Nur Punkte mit z=z_level für Horizontal
+punkte_z_level = [p for p in punkte if p[2] == z_level and p[3] is not None]
+
+# Farbzuordnungsfunktion
+def get_color(c):
+    if c > 9:
+        return 'red'
+    elif c < 1:
+        return 'blue'
+    else:
+        ratio = (c - 1) / 8
+        return plt.cm.RdBu(1 - ratio)  # Korrekte Nutzung der colormap
+
+# Punkte plotten
+for (x, y, z, c) in punkte_z_level:
+    if x_min <= x <= x_max and y_min <= y <= y_max:
+        color = get_color(c)
+        ax.plot(x, y, 'o', color=color, markersize=12)
+        ax.text(x + 1.5, y, f'{c:.1f}', fontsize=8, verticalalignment='center')
+
+# Achsenanpassung
+ax.set_xlim(x_min, x_max)
+ax.set_ylim(y_min, y_max)
+ax.set_aspect('equal')
+
+# Koordinatenachsen
+ax.axhline(0, color='blue', linewidth=1)
+ax.axvline(0, color='blue', linewidth=1)
+
+# Rotes Kreuz im Koordinatenursprung
+circle = plt.Circle((0, 0), radius=1, color='red', fill=False, linewidth=2)
+ax.add_patch(circle)
+line1 = plt.Line2D([0 - 1.5, 0 + 1.5], [0 - 1.5, 0 + 1.5], color='red', linewidth=2)
+line2 = plt.Line2D([0 - 1.5, 0 + 1.5], [0 + 1.5, 0 - 1.5], color='red', linewidth=2)
+ax.add_line(line1)
+ax.add_line(line2)
+
+ax.set_xlabel('X-Achse (Meter)')
+ax.set_ylabel('Y-Achse (Meter)')
+ax.set_title(f'Horizontal View (z={z_level}m) - House spacing: {houses_spacing_btw}m')
+ax.grid(False)
+
+# --- Legend ---
+red_patch = mpatches.Patch(color='red', label=f'c > {thresholds[1]}')
+blue_patch = mpatches.Patch(color='blue', label=f'c < {thresholds[0]}')
+plt.legend(loc="upper left", handles=[red_patch, blue_patch], fontsize=10)
+
+# --- Colorbar ---
+norm = BoundaryNorm([float('-inf'), thresholds[0], thresholds[1], float('inf')], cmap.N)
+sm = ScalarMappable(norm=plt.Normalize(thresholds[0], thresholds[1]), cmap=cmap)
+divider = make_axes_locatable(ax)
+colorbar_axes = divider.append_axes("right", size="5%", pad=0.1)
+cbar = plt.colorbar(sm, ax=ax, orientation='vertical', cax=colorbar_axes)
+cbar.set_label('c*[-]')
+
+plt.show()
+----
+
+
++*Out[72]:*+
+----
+5
+4
+5
+4
+5
+
+![png](output_39_1.png)
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+pip install numpy_stl
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+#Start visualisation of map with concentration location and averages, with model in background
+from windtunnel.concentration.utils import stl_to_2d_plot, add_crosses, show_multiple_projections
+from windtunnel.concentration.utils import plot_stl_3d, add_crosses_3d
+from windtunnel.concentration.utils import add_velocity_field
+import matplotlib.pyplot as plt
+import numpy as np
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+# Path to your STL file
+#stl_file = "/home/sabrina/Schreibtisch/Arbeit_2025/FreeCAD/20240206_BfS_model_scale_complete.stl"
+stl_file =  "/home/sabrina/Schreibtisch/Arbeit_2025/FreeCAD/20240711 UBA1c_2.stl"
+    
+# Define XY coordinates of concentration measurements
+
+#model scale
+"""
+points = [
+   #(-1020,0),
+   (-970,-105),
+   (930,270),
+   (-850,0),
+    (15, 25),
+    (20, 10),
+    (25, 15),
+    (30, 30),
+    #(x,y)
+]
+"""
+
+#Read-in from avg files
+
+from windtunnel.concentration.utils import load_avg_file
+file_path = output_path
+#file_names = [
+    #"Point_Data_avg\BFS_BD3_MP01_000_01\_avg_BFS_BD3_MP01_000_01.ts#0",
+    #"Point_Data_avg\BFS_BD3_MP01_000_01\_avg_BFS_BD3_MP01_000_01.ts#0"
+#]
+file_names = [
+    r'Point_Data_avg\UBA_GA_02_04_01_000_1_00\_avg_UBA_GA_02_04_01_000_1_001.txt.ts#0',
+    r"Point_Data_avg\UBA_GA_02_04_01_000_1_00\_avg_UBA_GA_02_04_01_000_1_001.txt.ts#1",
+    r"Point_Data_avg\UBA_GA_02_04_01_000_1_00\_avg_UBA_GA_02_04_01_000_1_001.txt.ts#2",
+    r"Point_Data_avg\UBA_GA_02_04_01_000_1_00\_avg_UBA_GA_02_04_01_000_1_001.txt.ts#3",
+    r"Point_Data_avg\UBA_GA_02_04_01_000_1_00\_avg_UBA_GA_02_04_01_000_1_001.txt.ts#4",
+    r"Point_Data_avg\UBA_GA_02_04_01_000_1_00\_avg_UBA_GA_02_04_01_000_1_001.txt.ts#5"
+]
+points_ms,values_ms, wind_speeds = [],[],[]
+for file_name in file_names:
+    data_dict = load_avg_file(file_path + file_name)
+    x = data_dict['metadata']['x (measurement relativ to source)']['value']
+    y = data_dict['metadata']['y (measurement relativ to source)']['value']
+    #z.append(data_dict['metadata']['z (measurement relativ to source)']['value'])
+    c = data_dict['data'][0]['net_concentration [ppmV]']
+    #To test out wind speeds
+    wind_speeds.append(data_dict['metadata']['wtref']['value'])
+    points_ms.append((x,y))
+    values_ms.append(c)
+
+
+ref_position = (0,0)
+
+
+#####Add velocity field
+#Velocity time series values for background overlaying wind field
+wind_speeds = [
+    0,
+    1,
+    2,
+    3
+]
+interpolate_windField = True #Interpolate between wind field measurement locations
+
+#Corresponding locations of measured velocites
+#points_wtref = [
+#    (-1800,-1800),
+#    (1800,-1800),
+#    (-1800,1800),
+#    (1800,1800)
+#]
+points_wtref = [
+    (5.0,5.0),
+    (5.0,5.0),
+    (5.0,5.0),
+    (5.0,5.0)
+]
+
+
+#Average concentration values
+values = [9.2484,3.557,72.931, 15, 25, 35, 45]#,c] #[77.262008,
+# Define thresholds and corresponding colors
+thresholds = [10, 20, 30, 40]
+colors = ['blue','green', 'yellow', 'orange', 'red']
+toFullScale="True"
+interpolate_windField=False
+
+#Call stl to polygon print
+fig, ax = stl_to_2d_plot(stl_file, projection='xy',toFullScale=toFullScale,scaling=1)
+#fig, ax = plot_stl_3d(stl_file, azim=0,elev=30,x_range=[-1000,1000],y_range=[-200,200], z_range=[-200,200])
+# Add velocity field (speeds only)  #toFullScale=False
+add_velocity_field(ax, points_wtref, values=wind_speeds, interpolate=interpolate_windField, grid_density=40, transparencyFactor=0.2,is_latlon=False, zorder=5,show_contour_lines=False)
+# Add crosses to the plot#
+add_crosses(ax, points_ms, values=values_ms, thresholds=thresholds, colors=colors,size=80, linewidth=1.5)
+#add_crosses_3d(ax, points, values=values, thresholds=thresholds, colors=colors,size=80, linewidth=1.5)
+# Show the plot
+ax.set_xlabel("X_ms[mm]")
+ax.set_ylabel("Y_ms[mm]")
+plt.tight_layout()
+plt.savefig("stl_with_crosses.png", dpi=300)
+plt.show()
+print(values_ms)
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+from windtunnel.concentration.utils import plot_stl_3d, add_crosses_3d, load_data_from_csv
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Path to your STL file for city structure
+stl_file = "/home/sabrina/Schreibtisch/Arbeit_2025/FreeCAD/20240711 UBA1c_2.stl"
+#Path to csv file containing locations and concentration values measured in format /x,y,z,c
+path_file = "/home/sabrina/Schreibtisch/Arbeit_2025/FreeCAD/UBA/loc+value.csv"
+points, values = load_data_from_csv(path_file) #File is in full scale 
+
+# Define 3D points for crosses (x, y, z coordinates)
+"""
+points = [
+    (-970, -105, 50),
+    (930, 270, 10),
+    (-850, 0, 20),
+    (15, 25, 30),
+    (20, 10, 15),
+    (25, 15, 40),
+    (30, 30, 60)
+]
+# Values for color-coding the crosses
+values = [9.2484, 3.557, 72.931, 15, 25, 35, 45]
+"""
+
+#For full scale trafo
+scale = 400
+
+x_range=None#[-30000,30000]#[-20000,-10000]#[-30000,30000]#[-10000,0]#[-30000,30000]
+y_range=None#[-45000,45000]#[5000,15000]#[-45000,45000]
+#x_range=[-30000,-10000]#[-30000,30000]#[-20000,-10000]#[-30000,30000]#[-10000,0]#[-30000,30000]
+#y_range=[30000,50000]#[-45000,45000]#[5000,15000]#[-45000,45000]
+z_range=[-15000,20000]
+#To Full scale range
+#x_range = [i * scale / 1000  for i in x_range] 
+#y_range = [i * scale / 1000  for i in y_range] 
+#z_range = [i * scale / 1000  for i in z_range]
+fig, ax = plot_stl_3d(stl_file,elev=30,azim=320,x_range=x_range,y_range=y_range,z_range=z_range,toFullScale="True",scaling=scale)
+#fig, ax = plot_stl_3d(stl_file,elev=0,azim=0)
+# Define thresholds and corresponding colors
+thresholds = [10, 20, 30, 40] 
+thresholds = [i / 10000 for i in thresholds]
+colors = ['blue', 'green', 'yellow', 'orange', 'red']
+
+add_crosses_3d(ax, points, values=values, thresholds=thresholds, colors=colors,
+              size=80, linewidth=1.5)
+plt.tight_layout()
+plt.savefig("stl_with_crosses.png", dpi=300)
+plt.show()
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+
+----
+
+
++*In[ ]:*+
+[source, ipython3]
+----
+
+----
+
+
++*In[2]:*+
+[source, ipython3]
+----
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.patches as mpatches
+
+# Bereiche definieren
+x_min, x_max = -10, 100
+y_min, y_max = -30, 30
+spacing = 5  # Abstand zwischen Linien in Metern
+
+# Linienanzahl berechnen
+x_lines = int(np.ceil((x_max - x_min) / spacing))
+y_lines = int(np.ceil((y_max - y_min) / spacing))
+
+fig, ax = plt.subplots(figsize=(14, 8))
+
+# Gitterlinien zeichnen
+for i in range(x_lines + 1):
+    x = x_min + i * spacing
+    ax.plot([x, x], [y_min, y_max], color='gray', linewidth=0.5)
+
+for j in range(y_lines + 1):
+    y = y_min + j * spacing
+    ax.plot([x_min, x_max], [y, y], color='gray', linewidth=0.5)
+
+# Schwarze 2x2 Felder in der Mitte
+for dx in [0.5, -0.5]:
+    for dy in [0.5, -0.5]:
+        x0 = -spacing/2 + dx * spacing
+        y0 = -spacing/2 + dy * spacing
+        rect = plt.Rectangle((x0, y0), spacing, spacing, color='black')
+        ax.add_patch(rect)
+
+# Neue Messpunkte mit Koordinaten und Konzentrationen
+punkte = [
+    (50, 0, 2, 5.84287089033691),
+    (50, 5, 2, 5.09859595682674),
+    (50, 10, 2, 2.98886433768624),
+    (50, 15, 2, 1.02305896833557),
+    (50, 20, 2, 0.202236630954002),
+    (50, 25, 2, 0.00205992647641945),
+    (50, -5, 2, 4.50611336835675),
+    (50, -15, 2, 0.608540377348909),
+    (7.5, 0, 2, 16.5982032658532),
+    (10, 0, 2, 14.0803862218811),
+    (12.5, 0, 2, 11.6858884092025),
+    (15, 0, 2, 9.93012024915678),
+    (17.5, 0, 2, 9.13859470076357),
+    (20, 0, 2, 8.63621265021175),
+    (25, 0, 2, 8.11519104657238),
+    (30, 0, 2, 7.58693528305659),
+    (50, 0, 2, 5.74686846301576),
+    (75, 0, 2, 4.23171605765212),
+    (100, 0, 2, 3.27102608371505),
+    (10, 0, 1, 9.91289299934861),
+    (10, 0, 2, 13.7506240797771),
+    (10, 0, 4, 25.0750319733066),
+    (10, 0, 6, 51.9828976157176),
+    (10, 0, 8, 120.138981271492),
+    (10, 0, 10, 75.4571856794695),
+    (10, 0, 12, 2.27672253137928),
+    (50, 0, 2, 5.84994819255544),
+    (50, 0, 6, 6.73458254897626),
+    (50, 0, 10, 5.61267341213733),
+    (50, 0, 14, 2.42026504687858),
+    (50, 0, 18, 0.447139986919479),
+    (50, 0, 22, 0.0305013827133299),
+    (10, 0, 2, 13.9932606170865),
+    (10, 2, 2, 13.0364814941968),
+    (10, 4, 2, 7.64499627309249),
+    (10, 6, 2, 1.33128651936484),
+    (10, 8, 2, 0.392317309017577),
+    (10, 10, 2, 0.0383563994082062),
+    (10, -4, 2, 7.47280230937592),
+    (10, -8, 2, 0.174029601097697),
+    (25, 0, 1, 6.25840340770818),
+    (25, 0, 2, 8.116680639725),
+    (25, 0, 4, 11.9216028372785),
+    (25, 0, 8, 19.6208040650182),
+    (25, 0, 12, 6.90769001425535),
+    (25, 0, 16, 0.119008018894885),
+]
+
+# Filter nur Punkte mit z=2
+gefilterte_punkte_z2 = [p for p in punkte if p[2] == 2]
+
+# Farbenfunktion
+def get_color(c):
+    if c > 9:
+        return 'red'
+    elif c < 1:
+        return 'blue'
+    else:
+        ratio = (c - 1) / (9 - 1)
+        return plt.cm.RdBu(1 - ratio)
+
+# Plotten mit Beschriftung der Konzentration
+for (x, y, z, c) in gefilterte_punkte_z2:
+    if x_min <= x <= x_max and y >= y_min and y <= y_max:
+        color = get_color(c)
+        ax.plot(x, y, 'o', color=color, markersize=12)
+        # Konzentration mit einer Nachkommastelle anzeigen
+        ax.text(x + 0.5, y, f'{c:.1f}', fontsize=8, verticalalignment='center')
+
+# Achsen & Legende
+ax.set_xlim(x_min, x_max)
+ax.set_ylim(y_min, y_max)
+ax.set_aspect('equal')
+ax.axhline(0, color='blue', linewidth=1)
+ax.axvline(0, color='blue', linewidth=1)
+ax.set_xlabel('X-Achse (Meter)')
+ax.set_ylabel('Y-Achse (Meter)')
+ax.set_title('Nur Punkte mit z=2 (Konzentration mit 1 Nachkommastelle)')
+ax.grid(False)
+
+# Legende für Farben
+red_patch = mpatches.Patch(color='red', label='c > 9')
+blue_patch = mpatches.Patch(color='blue', label='c < 1')
+plt.legend(handles=[red_patch, blue_patch])
+
+plt.show()
+
+----
+
+
++*Out[2]:*+
+----
+![png](output_46_0.png)
+----
