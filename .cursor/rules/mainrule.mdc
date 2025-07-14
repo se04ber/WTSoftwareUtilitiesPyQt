@@ -1,6 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-I want to create a gui for the backend (windtunnel folder) mainly the concentratoin and flow folders with the logic/functions. The usage/functionalities for the user can be seen in Example_point_measurement.py or example_data_analysis.py or in the jupyter notebooks example_pointconc_abalysis_200325compare4.ipynp and example_flow_aAnalysis_2.ipynb. the gui should also similar from the workflow have a part choosing the path/reading in the data, which postprocessing to apply and then the plotting logic (choosing what plots to show/create). The gui should be profesisonal why staying intiutivly and simple to understand. the code should be informatics professional regarding the principles of good software development, expandability, low coupling high coherence. the code should be  easy to expand later and to understand.  if it helps start maybe with the concentratoin since its less long, oriented on the notebook for the atomistic of the perfomred actions/user interaction needs.
