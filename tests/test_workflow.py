@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import pytest
 import io
+import tempfile
 from logic.data_loader import DataLoader
 from logic.ambient_manager import AmbientManager
 from logic.plot_manager import PlotManager
@@ -21,16 +22,36 @@ UBA_GA_02_04_01_000_1_001.txt.ts#5,100.0,0.0,10.0,0.0014,14.1165,14.1165,0.0037,
 def test_full_workflow(tmp_path):
     """
     Test the full workflow: load data, apply ambient, run analysis, and check output CSV.
+    Uses mock data files instead of real paths for CI compatibility.
     """
-    input_dir = "/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/QT_Try/ExampleData/InputData/Beispiel Umrechnung zur Kontrolle"
-    ambient_file = "/home/sabrina/Desktop/Schreibtisch/Arbeit_2025/QT_Try/ExampleData/ParameterFiles/ambient_conditions_.UBA_GA.csv"
+    # Create mock data files
+    mock_data_dir = tmp_path / "mock_data"
+    mock_data_dir.mkdir()
+    
+    # Create mock input files with sample data
+    input_files = []
+    for i in range(6):
+        mock_file = mock_data_dir / f"UBA_GA_02_04_01_000_1_001.txt.ts#{i}"
+        # Create sample data: x, y, z, c_star, net_concentration, full_scale_concentration
+        sample_data = f"0.005 5.24{i} 1.30{i} 14.85{i} 2.91{i} 3.84{i}"
+        mock_file.write_text(sample_data)
+        input_files.append(str(mock_file))
+    
+    # Create mock ambient file
+    mock_ambient_file = tmp_path / "mock_ambient.csv"
+    ambient_data = """Filename,Temperature,Pressure
+UBA_GA_02_04_01_000_1_001.txt.ts#0,20.0,101325
+UBA_GA_02_04_01_000_1_001.txt.ts#1,20.0,101325
+UBA_GA_02_04_01_000_1_001.txt.ts#2,20.0,101325
+UBA_GA_02_04_01_000_1_001.txt.ts#3,20.0,101325
+UBA_GA_02_04_01_000_1_001.txt.ts#4,20.0,101325
+UBA_GA_02_04_01_000_1_001.txt.ts#5,20.0,101325"""
+    mock_ambient_file.write_text(ambient_data)
+    
     output_csv = tmp_path / "output_stats.csv"
-    input_files = [
-        f"UBA_GA_02_04_01_000_1_001.txt.ts#{i}" for i in range(6)
-    ]
-    input_paths = [os.path.join(input_dir, f) for f in input_files]
+    
     df_actual = run_full_workflow(
-        input_paths, ambient_file, output_csv, DataLoader(), AmbientManager()
+        input_files, str(mock_ambient_file), str(output_csv), DataLoader(), AmbientManager()
     )
     df_expected = pd.read_csv(io.StringIO(EXAMPLE_EXPECTED_CSV))
     df_actual = df_actual.reset_index(drop=True)
