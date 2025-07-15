@@ -1,0 +1,932 @@
+{
+  "Histogram": {
+    "title": "Concentration Distribution",
+    "x_label": "Concentration [ppmV]",
+    "y_label": "Frequency",
+    "data_columns": [
+      "net_concentration",
+      "full_scale_concentration"
+    ],
+    "enabled": true,
+    "parameters": [
+      {
+        "name": "bins",
+        "display_name": "Number of Bins",
+        "parameter_type": "number",
+        "default_value": 21,
+        "description": "Number of histogram bins",
+        "choices": null,
+        "min_value": 5,
+        "max_value": 100,
+        "required": true
+      },
+      {
+        "name": "density",
+        "display_name": "Show Density",
+        "parameter_type": "boolean",
+        "default_value": true,
+        "description": "Show density instead of counts",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "color",
+        "display_name": "Bar Color",
+        "parameter_type": "choice",
+        "default_value": "blue",
+        "description": "Color of histogram bars",
+        "choices": [
+          "blue",
+          "red",
+          "green",
+          "orange",
+          "purple"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "alpha",
+        "display_name": "Transparency",
+        "parameter_type": "number",
+        "default_value": 0.7,
+        "description": "Transparency level (0-1)",
+        "choices": null,
+        "min_value": 0.0,
+        "max_value": 1.0,
+        "required": true
+      },
+      {
+        "name": "dimensionless",
+        "display_name": "Dimensionless",
+        "parameter_type": "choice",
+        "default_value": "False",
+        "description": "Use dimensionless concentration (C*)",
+        "choices": [
+          "True",
+          "False"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "labels",
+        "display_name": "Custom Labels",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Custom labels for datasets (comma-separated)",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "xAchse",
+        "display_name": "X-Axis Range",
+        "parameter_type": "text",
+        "default_value": "(0,1000)",
+        "description": "X-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "yAchse",
+        "display_name": "Y-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Y-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "legend_fontsize",
+        "display_name": "Legend Font Size",
+        "parameter_type": "number",
+        "default_value": 10,
+        "description": "Font size for legend text",
+        "choices": null,
+        "min_value": 6,
+        "max_value": 20,
+        "required": true
+      }
+    ]
+  },
+  "ScatterPlot": {
+    "title": "Concentration vs Distance",
+    "x_label": "Distance [m]",
+    "y_label": "Concentration [ppmV]",
+    "data_columns": [
+      "x_fs",
+      "y_fs",
+      "z_fs",
+      "net_concentration"
+    ],
+    "enabled": true,
+    "parameters": [
+      {
+        "name": "x_column",
+        "display_name": "X-Axis Data",
+        "parameter_type": "choice",
+        "default_value": "x_fs",
+        "description": "Data column for X-axis",
+        "choices": [
+          "x_fs",
+          "y_fs",
+          "z_fs",
+          "net_concentration"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "y_column",
+        "display_name": "Y-Axis Data",
+        "parameter_type": "choice",
+        "default_value": "net_concentration",
+        "description": "Data column for Y-axis",
+        "choices": [
+          "x_fs",
+          "y_fs",
+          "z_fs",
+          "net_concentration",
+          "c_star"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "point_size",
+        "display_name": "Point Size",
+        "parameter_type": "number",
+        "default_value": 50,
+        "description": "Size of scatter points",
+        "choices": null,
+        "min_value": 10,
+        "max_value": 200,
+        "required": true
+      },
+      {
+        "name": "color_by",
+        "display_name": "Color By",
+        "parameter_type": "choice",
+        "default_value": "none",
+        "description": "Color points by another variable",
+        "choices": [
+          "none",
+          "z_fs",
+          "c_star",
+          "net_concentration"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "dimensionless",
+        "display_name": "Dimensionless",
+        "parameter_type": "choice",
+        "default_value": "False",
+        "description": "Use dimensionless concentration (C*)",
+        "choices": [
+          "True",
+          "False"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "labels",
+        "display_name": "Custom Labels",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Custom labels for datasets (comma-separated)",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "xAchse",
+        "display_name": "X-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "X-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "yAchse",
+        "display_name": "Y-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Y-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "alpha",
+        "display_name": "Transparency",
+        "parameter_type": "number",
+        "default_value": 0.7,
+        "description": "Transparency level (0-1)",
+        "choices": null,
+        "min_value": 0.0,
+        "max_value": 1.0,
+        "required": true
+      },
+      {
+        "name": "marker_style",
+        "display_name": "Marker Style",
+        "parameter_type": "choice",
+        "default_value": "o",
+        "description": "Marker style for scatter points",
+        "choices": [
+          "o",
+          "s",
+          "^",
+          "v",
+          "D",
+          "p",
+          "*",
+          "h",
+          "H",
+          "+",
+          "x"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "legend_fontsize",
+        "display_name": "Legend Font Size",
+        "parameter_type": "number",
+        "default_value": 10,
+        "description": "Font size for legend text",
+        "choices": null,
+        "min_value": 6,
+        "max_value": 20,
+        "required": true
+      }
+    ]
+  },
+  "BoxPlot": {
+    "title": "Concentration Statistics by Location",
+    "x_label": "Location",
+    "y_label": "Concentration [ppmV]",
+    "data_columns": [
+      "net_concentration",
+      "full_scale_concentration"
+    ],
+    "enabled": true,
+    "parameters": [
+      {
+        "name": "group_by",
+        "display_name": "Group By",
+        "parameter_type": "choice",
+        "default_value": "filename",
+        "description": "Group data by this column",
+        "choices": [
+          "filename",
+          "x_fs",
+          "y_fs",
+          "z_fs"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "show_outliers",
+        "display_name": "Show Outliers",
+        "parameter_type": "boolean",
+        "default_value": true,
+        "description": "Show outlier points",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "notch",
+        "display_name": "Show Notch",
+        "parameter_type": "boolean",
+        "default_value": false,
+        "description": "Show confidence interval notch",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "color_scheme",
+        "display_name": "Color Scheme",
+        "parameter_type": "choice",
+        "default_value": "default",
+        "description": "Color scheme for boxes",
+        "choices": [
+          "default",
+          "viridis",
+          "plasma",
+          "coolwarm"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "dimensionless",
+        "display_name": "Dimensionless",
+        "parameter_type": "choice",
+        "default_value": "False",
+        "description": "Use dimensionless concentration (C*)",
+        "choices": [
+          "True",
+          "False"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "labels",
+        "display_name": "Custom Labels",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Custom labels for datasets (comma-separated)",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "xAchse",
+        "display_name": "X-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "X-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "yAchse",
+        "display_name": "Y-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Y-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "box_width",
+        "display_name": "Box Width",
+        "parameter_type": "number",
+        "default_value": 0.8,
+        "description": "Width of boxes",
+        "choices": null,
+        "min_value": 0.1,
+        "max_value": 2.0,
+        "required": true
+      },
+      {
+        "name": "flier_size",
+        "display_name": "Outlier Size",
+        "parameter_type": "number",
+        "default_value": 3.0,
+        "description": "Size of outlier points",
+        "choices": null,
+        "min_value": 1.0,
+        "max_value": 10.0,
+        "required": true
+      },
+      {
+        "name": "legend_fontsize",
+        "display_name": "Legend Font Size",
+        "parameter_type": "number",
+        "default_value": 10,
+        "description": "Font size for legend text",
+        "choices": null,
+        "min_value": 6,
+        "max_value": 20,
+        "required": true
+      }
+    ]
+  },
+  "Pdf": {
+    "title": "Probability Density Function",
+    "x_label": "Concentration [ppmV]",
+    "y_label": "Density",
+    "data_columns": [
+      "net_concentration",
+      "full_scale_concentration"
+    ],
+    "enabled": true,
+    "parameters": [
+      {
+        "name": "color",
+        "display_name": "Line Color",
+        "parameter_type": "choice",
+        "default_value": "black",
+        "description": "Color of PDF lines",
+        "choices": [
+          "blue",
+          "red",
+          "green",
+          "orange",
+          "purple",
+          "black"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "dimensionless",
+        "display_name": "Dimensionless",
+        "parameter_type": "choice",
+        "default_value": "False",
+        "description": "Use dimensionless concentration (C*)",
+        "choices": [
+          "True",
+          "False"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "labels",
+        "display_name": "Custom Labels",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Custom labels for datasets (comma-separated)",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "xAchse",
+        "display_name": "X-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "X-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "yAchse",
+        "display_name": "Y-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Y-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "line_style",
+        "display_name": "Line Style",
+        "parameter_type": "choice",
+        "default_value": "solid",
+        "description": "Line style for PDF curves",
+        "choices": [
+          "solid",
+          "dashed",
+          "dotted",
+          "dashdot"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "line_width",
+        "display_name": "Line Width",
+        "parameter_type": "number",
+        "default_value": 2.0,
+        "description": "Width of PDF lines",
+        "choices": null,
+        "min_value": 0.5,
+        "max_value": 5.0,
+        "required": true
+      },
+      {
+        "name": "legend_fontsize",
+        "display_name": "Legend Font Size",
+        "parameter_type": "number",
+        "default_value": 10,
+        "description": "Font size for legend text",
+        "choices": null,
+        "min_value": 6,
+        "max_value": 20,
+        "required": true
+      }
+    ]
+  },
+  "Cdf": {
+    "title": "Cumulative Distribution Function",
+    "x_label": "Concentration [ppmV]",
+    "y_label": "Cumulative Probability",
+    "data_columns": [
+      "net_concentration",
+      "full_scale_concentration"
+    ],
+    "enabled": true,
+    "parameters": [
+      {
+        "name": "color",
+        "display_name": "Line Color",
+        "parameter_type": "choice",
+        "default_value": "blue",
+        "description": "Color of CDF line",
+        "choices": [
+          "blue",
+          "red",
+          "green",
+          "orange",
+          "purple",
+          "black"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "dimensionless",
+        "display_name": "Dimensionless",
+        "parameter_type": "choice",
+        "default_value": "False",
+        "description": "Use dimensionless concentration (C*)",
+        "choices": [
+          "True",
+          "False"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "labels",
+        "display_name": "Custom Labels",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Custom labels for datasets (comma-separated)",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "xAchse",
+        "display_name": "X-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "X-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "yAchse",
+        "display_name": "Y-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Y-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "line_style",
+        "display_name": "Line Style",
+        "parameter_type": "choice",
+        "default_value": "solid",
+        "description": "Line style for CDF curves",
+        "choices": [
+          "solid",
+          "dashed",
+          "dotted",
+          "dashdot"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "line_width",
+        "display_name": "Line Width",
+        "parameter_type": "number",
+        "default_value": 2.0,
+        "description": "Width of CDF lines",
+        "choices": null,
+        "min_value": 0.5,
+        "max_value": 5.0,
+        "required": true
+      },
+      {
+        "name": "legend_fontsize",
+        "display_name": "Legend Font Size",
+        "parameter_type": "number",
+        "default_value": 10,
+        "description": "Font size for legend text",
+        "choices": null,
+        "min_value": 6,
+        "max_value": 20,
+        "required": true
+      }
+    ]
+  },
+  "Means": {
+    "title": "Mean Comparison",
+    "x_label": "Datasets",
+    "y_label": "Concentration [ppmV]",
+    "data_columns": [
+      "net_concentration",
+      "full_scale_concentration"
+    ],
+    "enabled": true,
+    "parameters": [
+      {
+        "name": "error_values",
+        "display_name": "Error Values",
+        "parameter_type": "number",
+        "default_value": 0.5,
+        "description": "Error bar values (absolute or percentage)",
+        "choices": null,
+        "min_value": 0.0,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "error_type",
+        "display_name": "Error Type",
+        "parameter_type": "choice",
+        "default_value": "absolute",
+        "description": "Type of error calculation",
+        "choices": [
+          "absolute",
+          "percentage",
+          "std"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "dimensionless",
+        "display_name": "Dimensionless",
+        "parameter_type": "choice",
+        "default_value": "False",
+        "description": "Use dimensionless concentration (C*)",
+        "choices": [
+          "True",
+          "False"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "labels",
+        "display_name": "Custom Labels",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Custom labels for datasets (comma-separated)",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "xAchse",
+        "display_name": "X-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "X-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "yAchse",
+        "display_name": "Y-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Y-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "bar_color",
+        "display_name": "Bar Color",
+        "parameter_type": "choice",
+        "default_value": "blue",
+        "description": "Color of mean bars",
+        "choices": [
+          "blue",
+          "red",
+          "green",
+          "orange",
+          "purple",
+          "gray"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "error_color",
+        "display_name": "Error Bar Color",
+        "parameter_type": "choice",
+        "default_value": "black",
+        "description": "Color of error bars",
+        "choices": [
+          "black",
+          "red",
+          "blue",
+          "green",
+          "orange"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "error_capsize",
+        "display_name": "Error Cap Size",
+        "parameter_type": "number",
+        "default_value": 5.0,
+        "description": "Size of error bar caps",
+        "choices": null,
+        "min_value": 0.0,
+        "max_value": 20.0,
+        "required": true
+      },
+      {
+        "name": "legend_fontsize",
+        "display_name": "Legend Font Size",
+        "parameter_type": "number",
+        "default_value": 10,
+        "description": "Font size for legend text",
+        "choices": null,
+        "min_value": 6,
+        "max_value": 20,
+        "required": true
+      }
+    ]
+  },
+  "PowerDensity": {
+    "title": "Power Spectral Density",
+    "x_label": "Frequency",
+    "y_label": "Power Density",
+    "data_columns": [
+      "net_concentration",
+      "full_scale_concentration"
+    ],
+    "enabled": true,
+    "parameters": [
+      {
+        "name": "dimensionless",
+        "display_name": "Dimensionless",
+        "parameter_type": "choice",
+        "default_value": "False",
+        "description": "Use dimensionless concentration (C*)",
+        "choices": [
+          "True",
+          "False"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "labels",
+        "display_name": "Custom Labels",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Custom labels for datasets (comma-separated)",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "xAchse",
+        "display_name": "X-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "X-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "yAchse",
+        "display_name": "Y-Axis Range",
+        "parameter_type": "text",
+        "default_value": "",
+        "description": "Y-axis range as tuple (min, max) or leave empty for auto",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "plot",
+        "display_name": "Show Plot",
+        "parameter_type": "boolean",
+        "default_value": true,
+        "description": "Display the plot (vs. just return figure)",
+        "choices": null,
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "line_color",
+        "display_name": "Line Color",
+        "parameter_type": "choice",
+        "default_value": "blue",
+        "description": "Color of power density lines",
+        "choices": [
+          "blue",
+          "red",
+          "green",
+          "orange",
+          "purple",
+          "black"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "line_style",
+        "display_name": "Line Style",
+        "parameter_type": "choice",
+        "default_value": "solid",
+        "description": "Line style for power density curves",
+        "choices": [
+          "solid",
+          "dashed",
+          "dotted",
+          "dashdot"
+        ],
+        "min_value": null,
+        "max_value": null,
+        "required": true
+      },
+      {
+        "name": "line_width",
+        "display_name": "Line Width",
+        "parameter_type": "number",
+        "default_value": 1.5,
+        "description": "Width of power density lines",
+        "choices": null,
+        "min_value": 0.5,
+        "max_value": 5.0,
+        "required": true
+      },
+      {
+        "name": "legend_fontsize",
+        "display_name": "Legend Font Size",
+        "parameter_type": "number",
+        "default_value": 10,
+        "description": "Font size for legend text",
+        "choices": null,
+        "min_value": 6,
+        "max_value": 20,
+        "required": true
+      }
+    ]
+  }
+}
