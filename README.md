@@ -74,7 +74,7 @@ python concentration_gui.py
 When you're done working with the application, you can deactivate the virtual environment:
 
 ```bash
-deactivate
+deactivate WTconc
 ```
 
 ## Dependencies
