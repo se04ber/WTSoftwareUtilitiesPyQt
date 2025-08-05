@@ -16,7 +16,7 @@ You can set up this application using one of two methods:
 ### Method 1: Direct Installation (System-wide)
 
 Install the required dependencies directly to your system Python:
-(!!It is recommended to install dependencies in an environment (method 2 or 3) to avoid potential problems with the versions of library dependencies required for other software installations on your system.!!)
+(!!It is recommended to install dependencies in an environment (method 2) to avoid potential problems with the versions of library dependencies required for other software installations on your system.!!)
 
 ```bash
 pip install -r requirements.txt
@@ -26,7 +26,7 @@ pip install -r requirements.txt
 
 Create an isolated Python environment for this project:
 
-####Method 3: Using venv (Built-in)
+### Method 2.1: Using venv 
 
 ```bash
 # Create virtual environment
@@ -42,7 +42,7 @@ WTconc\Scripts\activate
 pip install -r requirements.txt
 ```
 
-#### Using conda (Alternative)
+#### Using 2.2: Using conda 
 
 ```bash
 # Create virtual environment
