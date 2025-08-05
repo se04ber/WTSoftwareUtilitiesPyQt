@@ -42,7 +42,7 @@ WTconc\Scripts\activate
 pip install -r requirements.txt
 ```
 
-#### Using 2.2: Using conda 
+### Method 2.2: Using conda 
 
 ```bash
 # Create virtual environment
